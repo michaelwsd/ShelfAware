@@ -21,6 +21,7 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { createUser } from '../firebase/users';
+import { create } from '@mui/material/styles/createTransitions';
 
 // Animations
 const gradientShift = keyframes`
@@ -78,6 +79,7 @@ const SignupPage = () => {
         console.log('User signed up:', user);
         setSignedUp(true);
         createUser(user.uid, email, password, name);
+        createUserPantry(user.uid);
       })
       .catch((error) => {
         const errorCode = error.code;

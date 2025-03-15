@@ -10,7 +10,7 @@ export const createUserPantry = async (userId) => {
     return { id: pantryRef.id, ...pantry };
 };
 
-export const getUserPantry = async (userId) => {
+const getUserPantry = async (userId) => {
     const pantryRef = doc(db, `users/${userId}/pantry`);
     const pantrySnapshot = await getDoc(pantryRef);
     
@@ -19,6 +19,17 @@ export const getUserPantry = async (userId) => {
     }
 
     return { id: pantrySnapshot.id, ...pantrySnapshot.data() };
+};
+
+export const getPantryItems = async (userId) => {
+    const pantry = await getUserPantry(userId);
+    return pantry ? pantry.items : [];
+};
+
+export const addItemsToPantry = async (userId, items) => {
+    for (const item of items) {
+        await addItemToPantry(userId, item);
+    }
 };
 
 export const addItemToPantry = async (userId, item) => {
