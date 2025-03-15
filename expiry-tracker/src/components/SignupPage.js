@@ -20,6 +20,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import { createUser } from '../firebase/users';
 
 // Animations
 const gradientShift = keyframes`
@@ -76,6 +77,7 @@ const SignupPage = () => {
         const user = userCredential.user;
         console.log('User signed up:', user);
         setSignedUp(true);
+        createUser(user.uid, email, password, name);
       })
       .catch((error) => {
         const errorCode = error.code;
@@ -87,7 +89,7 @@ const SignupPage = () => {
   if (signedUp) {
     return <Navigate to="/" replace />;
   }
-  
+
   return (
     <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
       <motion.div
