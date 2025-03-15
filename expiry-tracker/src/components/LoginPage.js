@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { doSignInWithEmailAndPassword, doSignInWithGoogle } from '../firebase/auth'
-import { useAuth } from '../contexts/authContext';
 import { Navigate } from 'react-router-dom';
 
 import { 
@@ -264,7 +263,7 @@ const LoginPage = () => {
                   ),
                 }}
                 sx={{ 
-                  mb: 4,
+                  mb: errorMessage ? 1 : 4,
                   '& .MuiOutlinedInput-root': {
                     '& fieldset': {
                       borderColor: 'rgba(255,255,255,0.1)',
@@ -275,6 +274,14 @@ const LoginPage = () => {
                   }
                 }}
               />
+
+              <div style={{ color: "grey" }}>
+                {errorMessage && (
+                  <p className="error">
+                    {errorMessage && <p className="error">{errorMessage.slice(10, errorMessage.length)}</p>}
+                  </p>
+                )}
+              </div>
 
               <Button
                 type="submit"
@@ -318,7 +325,7 @@ const LoginPage = () => {
               >
                 Sign in with Google
               </Button>
-
+              
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
                   Don't have an account?{' '}
