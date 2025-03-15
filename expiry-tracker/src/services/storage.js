@@ -47,7 +47,7 @@ const storageService = {
 
   addItem: async (userId, purchaseDate, item) => {
     console.log('Adding item to the database:', item);
-    addItemToPantry(userId, item = { "id": this.id, "purchaseDate": purchaseDate, ...item });
+    addItemToPantry(userId, item = { "purchaseDate": purchaseDate, ...item });
   },
 
   editItem: async (userId, item) => {
