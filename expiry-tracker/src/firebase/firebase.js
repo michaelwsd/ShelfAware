@@ -3,15 +3,15 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBPq9HBxLI2kVEl0sdhFkWoGNpbxjGjnAY",
-  authDomain: "food-app-fbfd4.firebaseapp.com",
-  databaseURL: "https://food-app-fbfd4-default-rtdb.firebaseio.com",
-  projectId: "food-app-fbfd4",
-  storageBucket: "food-app-fbfd4.firebasestorage.app",
-  messagingSenderId: "970922318505",
-  appId: "1:970922318505:web:a76f7dc9db65e585f8a7b8",
-  measurementId: "G-HN8C77TTN0"
+  apiKey: "AIzaSyAo60vmdijIx9Q2Gdsj_XDAJ5QtNWkG7ZM",
+  authDomain: "foodwaste-5b731.firebaseapp.com",
+  projectId: "foodwaste-5b731",
+  storageBucket: "foodwaste-5b731.firebasestorage.app",
+  messagingSenderId: "593971518918",
+  appId: "1:593971518918:web:545af5817cfa23b1aca6c7",
+  measurementId: "G-GDDMMR4MS6"
 };
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
