@@ -79,7 +79,6 @@ const SignupPage = () => {
         console.log('User signed up:', user);
         setSignedUp(true);
         createUser(user.uid, email, password, name);
-        createUserPantry(user.uid);
       })
       .catch((error) => {
         const errorCode = error.code;
