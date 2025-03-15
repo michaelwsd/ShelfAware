@@ -8,14 +8,15 @@ import {
   Typography, 
   AppBar, 
   Toolbar,
-  Button
+  Button,
+  Link
 } from '@mui/material';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import { AnimatePresence, motion } from 'framer-motion';
 import Dashboard from './components/Dashboard';
 import UploadPage from './components/UploadPage';
 import HomePage from './components/HomePage';
-import { AnimatePresence, motion } from 'framer-motion';
 
 function App() {
   // Define theme colors

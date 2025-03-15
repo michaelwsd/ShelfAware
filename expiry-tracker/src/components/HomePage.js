@@ -119,24 +119,57 @@ const HomePage = () => {
           <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
             <Box textAlign="center" position="relative">
               <motion.div variants={fadeInUp}>
-                <Typography 
-                  variant="h1" 
-                  component="h1" 
-                  gutterBottom
-                  sx={{ 
-                    mb: 3,
-                    fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
-                    background: `linear-gradient(90deg, ${primaryPurple}, ${secondaryGreen})`,
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundSize: '200% 100%',
-                    animation: `${gradientShift} 4s ease infinite`,
-                    paddingBottom: '5px',
-                  }}
-                >
-                  Never Waste Food Again
-                </Typography>
+                {/* Title with improved positioning for the underline */}
+                <Box sx={{ display: 'inline-block', position: 'relative' }}>
+                  <Typography 
+                    variant="h1" 
+                    component="h1" 
+                    gutterBottom
+                    sx={{ 
+                      mb: 3,
+                      fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+                      background: `linear-gradient(90deg, ${primaryPurple}, ${secondaryGreen})`,
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundSize: '200% 100%',
+                      animation: `${gradientShift} 4s ease infinite`,
+                      paddingBottom: '5px',
+                    }}
+                  >
+                    Never Waste Food Again
+                  </Typography>
+                  
+                  {/* Hand-drawn underline positioned precisely under "Waste" */}
+                  <Box 
+                    sx={{ 
+                      position: 'absolute',
+                      left: { xs: '24%', sm: '26%', md: '24%' },   // Start further left
+                      width: { xs: '32%', sm: '30%', md: '28%' },  // Increase width significantly
+                      bottom: '18px', 
+                      height: '20px',
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    <motion.svg 
+                      width="100%" 
+                      height="100%" 
+                      viewBox="0 0 100 20"
+                      style={{ overflow: 'visible' }}
+                    >
+                      <motion.path
+                        d="M0,10 C20,18 40,5 60,12 C80,18 90,8 100,10"  // Wider path that spans the entire viewBox
+                        fill="transparent"
+                        stroke={primaryPurple}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 0.7 }}
+                        transition={{ delay: 0.5, duration: 1.2, ease: "easeInOut" }}
+                      />
+                    </motion.svg>
+                  </Box>
+                </Box>
               </motion.div>
               
               <motion.div 
@@ -168,8 +201,45 @@ const HomePage = () => {
                     justifyContent: 'center', 
                     gap: 2,
                     flexWrap: 'wrap',
+                    position: 'relative',
                   }}
                 >
+                  {/* Add the arrow outside the button but before it */}
+                  <Box sx={{ 
+                    position: 'absolute', 
+                    top: '50%',
+                    left: { xs: '75px', sm: '85px', md: '185px' }, 
+                    transform: 'translateY(-70%) rotate(12deg)',
+                    zIndex: 1, 
+                    pointerEvents: 'none',
+                    display: { xs: 'none', sm: 'block' }  // Hide on mobile
+                  }}>
+                    <motion.svg width="80" height="40" viewBox="0 0 80 40">
+                      {/* Arrow body - curved from left */}
+                      <motion.path
+                        d="M5,20 C25,5 45,35 65,20"
+                        fill="transparent"
+                        stroke={secondaryGreen}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 0.8 }}
+                        transition={{ delay: 2, duration: 1 }}
+                      />
+                      {/* Arrow tip - pointing right */}
+                      <motion.path
+                        d="M65,20 L58,14 L58,26"
+                        fill="transparent"
+                        stroke={secondaryGreen}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 0.8 }}
+                        transition={{ delay: 3, duration: 0.5 }}
+                      />
+                    </motion.svg>
+                  </Box>
+
                   <Button 
                     variant="contained" 
                     color="primary"
@@ -300,6 +370,67 @@ const HomePage = () => {
         animate="visible"
         variants={fadeIn}
       >
+        <Box sx={{ width: '100%', height: '40px', my: 3, position: 'relative', pointerEvents: 'none' }}>
+          <motion.svg width="100%" height="100%" viewBox="0 0 1000 40">
+            <motion.path
+              d="M0,20 C100,10 200,30 300,15 C400,0 500,40 600,20 C700,0 800,30 900,15 C950,7 975,15 1000,20"
+              fill="transparent"
+              stroke="rgba(255,255,255,0.1)"
+              strokeWidth="2"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 2 }}
+            />
+            
+            {/* Apple doodle with improved stem and completed body */}
+            <g transform="translate(485, 5)">
+              {/* Apple body - more complete and natural shape */}
+              <motion.path
+                d="M15,20 C15,10 25,5 30,15 C35,5 45,10 45,20 C45,35 30,55 30,55 C30,55 15,35 15,20 Z"
+                fill="transparent"
+                stroke={secondaryGreen}
+                strokeWidth="1.5"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ delay: 2, duration: 1.2 }}
+              />
+              
+              {/* Bite mark - better positioned */}
+              <motion.path
+                d="M38,15 C44,22 42,32 36,38"
+                fill="transparent"
+                stroke={secondaryGreen}
+                strokeWidth="1.5"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ delay: 3.2, duration: 0.6 }}
+              />
+              
+              {/* Fixed apple stem - shorter and more natural */}
+              <motion.path
+                d="M29,12 C29.5,8 32,6 34,5"
+                fill="transparent"
+                stroke={secondaryGreen}
+                strokeWidth="2"
+                strokeLinecap="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ delay: 3.8, duration: 0.4 }}
+              />
+              
+              {/* Enhanced leaf with better shape */}
+              <motion.path
+                d="M34,5 C38,3 42,7 38,10"
+                fill="transparent"
+                stroke={secondaryGreen}
+                strokeWidth="1.5"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ delay: 4.2, duration: 0.5 }}
+              />
+            </g>
+          </motion.svg>
+        </Box>
         <Box sx={{ mb: 8 }}>
           <motion.div variants={fadeInUp}>
             <Typography 
