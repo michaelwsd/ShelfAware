@@ -13,7 +13,7 @@ import {
   Link as MuiLink
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { color, motion } from 'framer-motion';
 import { keyframes } from '@emotion/react';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -35,9 +35,9 @@ const SignupPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [signedUp, setSignedUp] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Theme colors
-  const primaryPurple = '#755dff';
   const secondaryGreen = '#4aeabc';
   const accentOrange = '#ff9757';
   
@@ -82,6 +82,7 @@ const SignupPage = () => {
       .catch((error) => {
         const errorCode = error.code;
         const errorMessage = error.message;
+        setErrorMessage(error.message);
         console.error('Error signing up:', errorCode, errorMessage);
       });
   };
@@ -277,7 +278,7 @@ const SignupPage = () => {
                   ),
                 }}
                 sx={{ 
-                  mb: 4,
+                  mb: errorMessage ? 1 : 4,
                   '& .MuiOutlinedInput-root': {
                     '& fieldset': {
                       borderColor: 'rgba(255,255,255,0.1)',
@@ -288,6 +289,14 @@ const SignupPage = () => {
                   }
                 }}
               />
+
+              <div style={{ color: "grey" }}>
+                {errorMessage && (
+                  <p className="error">
+                    {errorMessage.length > 10 ? errorMessage.slice(10) : errorMessage}
+                  </p>
+                )}
+              </div>
 
               <Button
                 type="submit"
