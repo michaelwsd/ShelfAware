@@ -14,8 +14,6 @@ import {
   IconButton,
   Link as MuiLink,
   Alert,
-  CircularProgress,
-  Divider
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -34,12 +32,11 @@ const gradientShift = keyframes`
 `;
 
 const LoginPage = () => {
-  const { authError } = useAuth();
+  const { currentUser, authError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [formErrors, setFormErrors] = useState({
     email: '',
@@ -121,7 +118,6 @@ const LoginPage = () => {
         console.log('Attempting to sign in with email:', email);
         await doSignInWithEmailAndPassword(email, password);
         console.log('Sign in successful');
-        setIsSignedIn(true);
       } catch (error) {
         console.error("Sign in error:", error);
         setErrorMessage(error.message || 'An error occurred during sign in');
@@ -143,7 +139,6 @@ const LoginPage = () => {
         console.log('Attempting to sign in with Google');
         await doSignInWithGoogle();
         console.log('Google sign in successful');
-        setIsSignedIn(true);
       } catch (error) {
         console.error("Google sign in error:", error);
         setErrorMessage(error.message || 'An error occurred during Google sign in');
@@ -153,7 +148,7 @@ const LoginPage = () => {
     }
   };
 
-  if (isSignedIn) {
+  if (currentUser) {
     return <Navigate to="/" replace />;
   }
 

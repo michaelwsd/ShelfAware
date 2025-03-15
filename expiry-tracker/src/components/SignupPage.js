@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { doCreateUserWithEmailAndPassword } from '../firebase/auth';
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/authContext';
 import { 
   Box, 
   Typography, 
@@ -31,12 +32,12 @@ const gradientShift = keyframes`
 `;
 
 const SignupPage = () => {
+  const { currentUser, authError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [signedUp, setSignedUp] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [formErrors, setFormErrors] = useState({
@@ -137,7 +138,6 @@ const SignupPage = () => {
         console.log('Creating user account with email:', email);
         await doCreateUserWithEmailAndPassword(email, password, name);
         console.log('User account created successfully');
-        setSignedUp(true);
       } catch (error) {
         console.error("Error during signup:", error);
         setErrorMessage(error.message || 'An error occurred during signup');
@@ -147,7 +147,7 @@ const SignupPage = () => {
     }
   };
 
-  if (signedUp) {
+  if (currentUser) {
     return <Navigate to="/" replace />;
   }
 
