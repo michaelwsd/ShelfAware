@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+import { doSignInWithEmailAndPassword, doSignInWithGoogle } from '../firebase/auth'
+import { useAuth } from '../contexts/authContext';
+import { Navigate } from 'react-router-dom';
+
 import { 
   Box, 
   Typography, 
@@ -26,9 +30,13 @@ const gradientShift = keyframes`
 `;
 
 const LoginPage = () => {
+  // const { userLoggedIn } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Theme colors
   const primaryPurple = '#755dff';
@@ -62,11 +70,39 @@ const LoginPage = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Authentication will be implemented later by your friend
-    console.log('Login attempted with:', email, password);
+    if (!isSigningIn) {
+      setIsSigningIn(true);
+      try {
+        await doSignInWithEmailAndPassword(email, password);
+        setIsSignedIn(true);
+      } catch (error) {
+        setErrorMessage(error.message);
+      } finally {
+        setIsSigningIn(false);
+      }
+    }
   };
+
+  const onGoogleSignIn = async (e) => {
+    e.preventDefault();
+    if (!isSigningIn) {
+      setIsSigningIn(true);
+      try {
+        await doSignInWithGoogle();
+        setIsSignedIn(true);
+      } catch (err) {
+        setErrorMessage(err.message);
+      } finally {
+        setIsSigningIn(false);
+      }
+    }
+  };
+
+  if (isSignedIn) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
@@ -258,6 +294,28 @@ const LoginPage = () => {
                 }}
               >
                 Sign In
+              </Button>
+
+              <Button
+                type="submit"
+                onClick={(e) => { onGoogleSignIn(e) }}
+                fullWidth
+                variant="contained"
+                color="primary"
+                size="large"
+                sx={{ 
+                  mb: 3,
+                  py: 1.2,
+                  borderRadius: 2,
+                  fontWeight: 500,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 10px rgba(0,0,0,0.1)'
+                  }
+                }}
+              >
+                Sign in with Google
               </Button>
 
               <Box sx={{ textAlign: 'center' }}>
