@@ -16,6 +16,7 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import { keyframes } from '@emotion/react';
+import { motion } from 'framer-motion';
 
 // Custom animations
 const pulseAnimation = keyframes`
@@ -33,6 +34,16 @@ const glowEffect = keyframes`
   0% { box-shadow: 0 0 5px rgba(117, 93, 255, 0.4); }
   50% { box-shadow: 0 0 20px rgba(117, 93, 255, 0.7); }
   100% { box-shadow: 0 0 5px rgba(117, 93, 255, 0.4); }
+`;
+
+const fadeInUp = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const shimmer = keyframes`
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
 `;
 
 const FileUpload = () => {
@@ -266,6 +277,10 @@ const FileUpload = () => {
         {preview ? (
           <Fade in={true}>
             <Box 
+              component={motion.div}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
               sx={{ 
                 width: '100%', 
                 display: 'flex', 
@@ -294,7 +309,7 @@ const FileUpload = () => {
                 <CloseIcon fontSize="small" />
               </IconButton>
               
-              {/* Receipt preview */}
+              {/* Receipt preview with enhanced animations */}
               <Box 
                 component="img"
                 src={preview}
@@ -307,14 +322,21 @@ const FileUpload = () => {
                   filter: loading 
                     ? 'brightness(0.7) contrast(1.1)' 
                     : 'brightness(0.85)',
-                  transition: 'all 0.3s ease',
+                  transition: 'all 0.5s ease',
+                  animation: `${fadeInUp} 0.5s ease-out`,
+                  ...(loading && {
+                    boxShadow: '0 0 8px rgba(117,93,255,0.5)'
+                  })
                 }}
               />
               
-              {/* Success overlay */}
+              {/* Success overlay with enhanced animations */}
               {uploadComplete && (
                 <Zoom in={uploadComplete}>
                   <Box 
+                    component={motion.div}
+                    initial={{ scale: 0.5 }}
+                    animate={{ scale: 1 }}
                     sx={{
                       position: 'absolute',
                       top: '50%',
@@ -339,12 +361,15 @@ const FileUpload = () => {
           </Fade>
         ) : (
           <Box
+            component={motion.div}
+            whileHover={{ scale: 1.02 }}
             sx={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               p: 2,
+              animation: `${fadeInUp} 0.5s ease-out`
             }}
           >
             <Box 
@@ -431,6 +456,9 @@ const FileUpload = () => {
           fullWidth
           disabled={loading || !file}
           onClick={handleUpload}
+          component={motion.button}
+          whileHover={!loading && file ? { scale: 1.03 } : {}}
+          whileTap={!loading && file ? { scale: 0.97 } : {}}
           sx={{
             bgcolor: primaryPurple,
             color: textPrimary,
@@ -443,7 +471,12 @@ const FileUpload = () => {
             '&:disabled': {
               bgcolor: 'rgba(117,93,255,0.2)',
               color: 'rgba(255,255,255,0.3)'
-            }
+            },
+            ...(loading && {
+              background: `linear-gradient(90deg, ${primaryPurple}, #8672ff, ${primaryPurple})`,
+              backgroundSize: '200% 100%',
+              animation: `${shimmer} 1.5s infinite linear`
+            })
           }}
         >
           {loading ? (

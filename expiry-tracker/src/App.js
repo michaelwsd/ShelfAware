@@ -6,29 +6,16 @@ import {
   Container, 
   Box, 
   Typography, 
-  Paper, 
   AppBar, 
   Toolbar,
-  Button,
-  Divider,
-  Icon
+  Button
 } from '@mui/material';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import FileUpload from './components/FileUpload';
-import { keyframes } from '@emotion/react';
 import Dashboard from './components/Dashboard';
 import UploadPage from './components/UploadPage';
 import HomePage from './components/HomePage';
-
-// Animations
-const gradientShift = keyframes`
-  0% { background-position: 0% 50% }
-  50% { background-position: 100% 50% }
-  100% { background-position: 0% 50% }
-`;
+import { AnimatePresence, motion } from 'framer-motion';
 
 function App() {
   // Define theme colors
@@ -255,11 +242,43 @@ function App() {
           
           {/* Main Content */}
           <Container maxWidth="xl" sx={{ mt: 4, mb: 4, flex: 1 }}>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/upload" element={<UploadPage />} />
-            </Routes>
+            <AnimatePresence mode="wait">
+              <Routes>
+                <Route path="/" element={
+                  <motion.div
+                    key="home"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <HomePage />
+                  </motion.div>
+                } />
+                <Route path="/dashboard" element={
+                  <motion.div
+                    key="dashboard"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Dashboard />
+                  </motion.div>
+                } />
+                <Route path="/upload" element={
+                  <motion.div
+                    key="upload"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <UploadPage />
+                  </motion.div>
+                } />
+              </Routes>
+            </AnimatePresence>
           </Container>
           
           {/* Footer */}
