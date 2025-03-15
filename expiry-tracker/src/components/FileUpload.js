@@ -17,6 +17,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import { keyframes } from '@emotion/react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../contexts/authContext';
+import storageService from '../services/storage';
+import ocrService from '../services/ocr';
 
 // Custom animations
 const pulseAnimation = keyframes`
@@ -47,6 +50,7 @@ const shimmer = keyframes`
 `;
 
 const FileUpload = () => {
+  const { currentUser } = useAuth();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -99,25 +103,40 @@ const FileUpload = () => {
       return;
     }
 
+    if (!currentUser) {
+      setMessage({ type: 'error', text: 'You must be logged in to upload receipts!' });
+      return;
+    }
+
     setLoading(true);
     setMessage({ type: '', text: '' });
-
+    
     try {
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 2200));
+      // 1. Upload the image to Firebase Storage
+      const imageResult = await storageService.saveReceiptImage(currentUser.uid, file);
       
-      // This is where you would call the OCR service and process the receipt
-      console.log('Processing file:', file.name);
+      if (imageResult.error) {
+        throw new Error(imageResult.error);
+      }
       
+      // 2. Process the receipt with OCR
+      const receiptData = await ocrService.processReceipt(file);
+      
+      // 3. Save the extracted items to the database
+      if (receiptData && receiptData.items && receiptData.items.length > 0) {
+        await storageService.saveItems(currentUser.uid, receiptData.date, receiptData.items);
+      }
+      
+      setUploadComplete(true);
       setMessage({ 
         type: 'success', 
-        text: 'Receipt processed! 6 items identified with expiry dates.' 
+        text: `Receipt processed successfully! Found ${receiptData.items.length} items.` 
       });
-      setUploadComplete(true);
     } catch (error) {
+      console.error('Error processing receipt:', error);
       setMessage({ 
         type: 'error', 
-        text: 'Error processing receipt: ' + (error.message || 'Unknown error') 
+        text: `Error processing receipt: ${error.message}` 
       });
     } finally {
       setLoading(false);

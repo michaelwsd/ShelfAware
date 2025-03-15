@@ -10,18 +10,18 @@ import {
   Container,
   InputAdornment,
   IconButton,
-  Link as MuiLink
+  Link as MuiLink,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { color, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { keyframes } from '@emotion/react';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import { createUser } from '../firebase/users';
-import { create } from '@mui/material/styles/createTransitions';
 
 // Animations
 const gradientShift = keyframes`
@@ -35,8 +35,16 @@ const SignupPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [signedUp, setSignedUp] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isSigningUp, setIsSigningUp] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
 
   // Theme colors
   const secondaryGreen = '#4aeabc';
@@ -69,23 +77,74 @@ const SignupPage = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    const errors = {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: ''
+    };
+    let isValid = true;
+
+    // Validate name
+    if (!name.trim()) {
+      errors.name = 'Name is required';
+      isValid = false;
+    }
+
+    // Validate email
+    if (!email) {
+      errors.email = 'Email is required';
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = 'Email address is invalid';
+      isValid = false;
+    }
+
+    // Validate password
+    if (!password) {
+      errors.password = 'Password is required';
+      isValid = false;
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+      isValid = false;
+    }
+
+    // Validate confirm password
+    if (password !== confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Authentication will be implemented later by your friend
-    doCreateUserWithEmailAndPassword(email, password)
-      .then((userCredential) => {
-        // Signed up
-        const user = userCredential.user;
-        console.log('User signed up:', user);
+    
+    // Clear previous error
+    setErrorMessage('');
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+    
+    if (!isSigningUp) {
+      setIsSigningUp(true);
+      try {
+        console.log('Creating user account with email:', email);
+        await doCreateUserWithEmailAndPassword(email, password, name);
+        console.log('User account created successfully');
         setSignedUp(true);
-        createUser(user.uid, email, password, name);
-      })
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        setErrorMessage(error.message);
-        console.error('Error signing up:', errorCode, errorMessage);
-      });
+      } catch (error) {
+        console.error("Error during signup:", error);
+        setErrorMessage(error.message || 'An error occurred during signup');
+      } finally {
+        setIsSigningUp(false);
+      }
+    }
   };
 
   if (signedUp) {
@@ -194,6 +253,22 @@ const SignupPage = () => {
               </Typography>
             </motion.div>
 
+            {/* Display error message */}
+            {errorMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Alert 
+                  severity="error" 
+                  sx={{ mb: 3, borderRadius: 2 }}
+                >
+                  {errorMessage}
+                </Alert>
+              </motion.div>
+            )}
+
             <motion.form 
               onSubmit={handleSubmit}
               variants={fadeInUp}
@@ -206,6 +281,8 @@ const SignupPage = () => {
                 margin="normal"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                error={!!formErrors.name}
+                helperText={formErrors.name}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -234,6 +311,8 @@ const SignupPage = () => {
                 margin="normal"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                error={!!formErrors.email}
+                helperText={formErrors.email}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -261,6 +340,8 @@ const SignupPage = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                error={!!formErrors.password}
+                helperText={formErrors.password}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -279,7 +360,7 @@ const SignupPage = () => {
                   ),
                 }}
                 sx={{ 
-                  mb: errorMessage ? 1 : 4,
+                  mb: 3,
                   '& .MuiOutlinedInput-root': {
                     '& fieldset': {
                       borderColor: 'rgba(255,255,255,0.1)',
@@ -291,13 +372,44 @@ const SignupPage = () => {
                 }}
               />
 
-              <div style={{ color: "grey" }}>
-                {errorMessage && (
-                  <p className="error">
-                    {errorMessage.length > 10 ? errorMessage.slice(10) : errorMessage}
-                  </p>
-                )}
-              </div>
+              <TextField
+                fullWidth
+                label="Confirm Password"
+                variant="outlined"
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                error={!!formErrors.confirmPassword}
+                helperText={formErrors.confirmPassword}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlinedIcon sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={handlePasswordVisibility}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ 
+                  mb: 3,
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(255,255,255,0.1)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255,255,255,0.2)',
+                    },
+                  }
+                }}
+              />
 
               <Button
                 type="submit"
@@ -305,6 +417,7 @@ const SignupPage = () => {
                 variant="contained"
                 color="primary"
                 size="large"
+                disabled={isSigningUp}
                 sx={{ 
                   mb: 3,
                   py: 1.2,
@@ -317,7 +430,14 @@ const SignupPage = () => {
                   }
                 }}
               >
-                Create Account
+                {isSigningUp ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                    Creating Account...
+                  </Box>
+                ) : (
+                  'Create Account'
+                )}
               </Button>
 
               <Box sx={{ textAlign: 'center' }}>

@@ -10,7 +10,8 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -18,6 +19,8 @@ import TimerIcon from '@mui/icons-material/Timer';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { keyframes } from '@emotion/react';
+import { useAuth } from '../contexts/authContext';
+import storageService from '../services/storage';
 
 // Animations
 const countUp = keyframes`
@@ -38,58 +41,90 @@ const accentOrange = '#ff9757';
 const dangerRed = '#ff5c5c';
 const textPrimary = '#ffffff';
 
-// Sample data for demonstration
-const expiringItems = [
-  { id: 1, name: "Milk", expiryDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), daysLeft: 2, category: "Dairy" },
-  { id: 2, name: "Bread", expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), daysLeft: 1, category: "Bakery" },
-  { id: 3, name: "Spinach", expiryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), daysLeft: 3, category: "Produce" },
-];
-
-const recentItems = [
-  { id: 4, name: "Eggs", expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), daysLeft: 14, category: "Dairy" },
-  { id: 5, name: "Chicken", expiryDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), daysLeft: 2, category: "Meat" },
-  { id: 6, name: "Apples", expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), daysLeft: 7, category: "Produce" },
-];
-
 const Dashboard = () => {
+  const { currentUser } = useAuth();
   const [animateStats, setAnimateStats] = useState(false);
   const [statValues, setStatValues] = useState({ total: 0, categories: 0, saved: 0 });
+  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState([]);
+  const [expiringItems, setExpiringItems] = useState([]);
+  const [recentItems, setRecentItems] = useState([]);
+  
+  useEffect(() => {
+    const fetchItems = async () => {
+      if (currentUser) {
+        try {
+          setLoading(true);
+          const fetchedItems = await storageService.getItems(currentUser.uid);
+          
+          if (fetchedItems && fetchedItems.length > 0) {
+            // Process items
+            const now = new Date();
+            const processedItems = fetchedItems.map(item => {
+              // Convert string dates to Date objects if needed
+              const expiryDate = item.expiryDate instanceof Date 
+                ? item.expiryDate 
+                : new Date(item.expiryDate);
+              
+              // Calculate days left
+              const timeDiff = expiryDate.getTime() - now.getTime();
+              const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+              
+              return {
+                ...item,
+                expiryDate,
+                daysLeft
+              };
+            });
+            
+            setItems(processedItems);
+            
+            // Filter expiring items (less than 4 days)
+            const expiring = processedItems
+              .filter(item => item.daysLeft <= 3)
+              .sort((a, b) => a.daysLeft - b.daysLeft);
+            setExpiringItems(expiring);
+            
+            // Get recent items (added in the last 7 days)
+            const recent = processedItems
+              .filter(item => {
+                const purchaseDate = item.purchaseDate instanceof Date 
+                  ? item.purchaseDate 
+                  : new Date(item.purchaseDate);
+                const daysSincePurchase = Math.ceil((now - purchaseDate) / (1000 * 3600 * 24));
+                return daysSincePurchase <= 7;
+              })
+              .sort((a, b) => {
+                const dateA = a.purchaseDate instanceof Date ? a.purchaseDate : new Date(a.purchaseDate);
+                const dateB = b.purchaseDate instanceof Date ? b.purchaseDate : new Date(b.purchaseDate);
+                return dateB - dateA; // Sort by most recent first
+              });
+            setRecentItems(recent);
+            
+            // Update stats
+            const categories = new Set(processedItems.map(item => item.category)).size;
+            setStatValues({
+              total: processedItems.length,
+              categories,
+              saved: Math.floor(processedItems.length * 0.4) // Just an estimate for saved items
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching items:", error);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+    
+    fetchItems();
+  }, [currentUser]);
   
   useEffect(() => {
     // Start animation after component mounts
     setAnimateStats(true);
-    
-    // Animate stats counting up
-    const timer = setTimeout(() => {
-      const intervalTotal = setInterval(() => {
-        setStatValues(prev => {
-          if (prev.total >= 18) clearInterval(intervalTotal);
-          return { ...prev, total: Math.min(prev.total + 1, 18) };
-        });
-      }, 100);
-      
-      const intervalCategories = setInterval(() => {
-        setStatValues(prev => {
-          if (prev.categories >= 5) clearInterval(intervalCategories);
-          return { ...prev, categories: Math.min(prev.categories + 1, 5) };
-        });
-      }, 200);
-      
-      const intervalSaved = setInterval(() => {
-        setStatValues(prev => {
-          if (prev.saved >= 8) clearInterval(intervalSaved);
-          return { ...prev, saved: Math.min(prev.saved + 1, 8) };
-        });
-      }, 150);
-      
-      return () => {
-        clearInterval(intervalTotal);
-        clearInterval(intervalCategories);
-        clearInterval(intervalSaved);
-      };
-    }, 300);
-    
-    return () => clearTimeout(timer);
   }, []);
 
   const getExpiryStatusColor = (daysLeft) => {

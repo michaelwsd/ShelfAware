@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ThemeProvider, 
   createTheme, 
@@ -8,7 +8,9 @@ import {
   Typography, 
   AppBar, 
   Toolbar,
-  Button
+  Button,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
@@ -18,10 +20,13 @@ import UploadPage from './components/UploadPage';
 import HomePage from './components/HomePage';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
+import { useAuth } from './contexts/authContext';
+import { auth } from './firebase/firebase';
 
 // Layout component that handles conditional rendering of header/footer
 const AppLayout = ({ children }) => {
   const location = useLocation();
+  const { currentUser, authError } = useAuth();
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
   
   // Theme colors for use in components
@@ -103,19 +108,35 @@ const AppLayout = ({ children }) => {
               >
                 Upload
               </Button>
-              <Button 
-                component={Link} 
-                to="/login"
-                color="inherit"
-                variant="outlined"
-                size="small"
-                sx={{ 
-                  ml: 2,
-                  borderColor: 'rgba(255,255,255,0.2)'
-                }}
-              >
-                Login
-              </Button>
+              
+              {currentUser ? (
+                <Button 
+                  color="inherit"
+                  variant="outlined"
+                  size="small"
+                  onClick={() => auth.signOut()}
+                  sx={{ 
+                    ml: 2,
+                    borderColor: 'rgba(255,255,255,0.2)'
+                  }}
+                >
+                  Logout
+                </Button>
+              ) : (
+                <Button 
+                  component={Link} 
+                  to="/login"
+                  color="inherit"
+                  variant="outlined"
+                  size="small"
+                  sx={{ 
+                    ml: 2,
+                    borderColor: 'rgba(255,255,255,0.2)'
+                  }}
+                >
+                  Login
+                </Button>
+              )}
             </Box>
           </Toolbar>
         </AppBar>
@@ -148,6 +169,39 @@ const AppLayout = ({ children }) => {
 };
 
 function App() {
+  const { authError } = useAuth();
+  const [firebaseError, setFirebaseError] = useState(null);
+  const [showFirebaseError, setShowFirebaseError] = useState(false);
+  
+  useEffect(() => {
+    // Check if Firebase auth is initialized
+    const checkFirebase = async () => {
+      try {
+        if (!auth) {
+          throw new Error('Firebase authentication is not initialized.');
+        }
+        
+        // Check if we can access the current user
+        await auth.currentUser;
+        console.log('Firebase auth is properly initialized');
+      } catch (error) {
+        console.error('Firebase initialization error:', error);
+        setFirebaseError(error.message);
+        setShowFirebaseError(true);
+      }
+    };
+    
+    checkFirebase();
+  }, []);
+  
+  // If auth error is present in the context, show it
+  useEffect(() => {
+    if (authError) {
+      setFirebaseError(authError.message);
+      setShowFirebaseError(true);
+    }
+  }, [authError]);
+  
   // Define theme colors
   const darkBg = '#1e2233';
   const cardBg = '#0f1424';
@@ -262,6 +316,24 @@ function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
+      
+      {/* Error Snackbar for Firebase errors */}
+      <Snackbar
+        open={showFirebaseError}
+        autoHideDuration={6000}
+        onClose={() => setShowFirebaseError(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowFirebaseError(false)} 
+          severity="error" 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {firebaseError || 'Firebase initialization error. Please check console for details.'}
+        </Alert>
+      </Snackbar>
+      
       <Router>
         <AppLayout>
           <Routes>

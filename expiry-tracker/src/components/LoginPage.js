@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { doSignInWithEmailAndPassword, doSignInWithGoogle } from '../firebase/auth'
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/authContext';
 
 import { 
   Box, 
@@ -11,7 +12,10 @@ import {
   Container,
   InputAdornment,
   IconButton,
-  Link as MuiLink
+  Link as MuiLink,
+  Alert,
+  CircularProgress,
+  Divider
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -20,6 +24,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import GoogleIcon from '@mui/icons-material/Google';
 
 // Animations
 const gradientShift = keyframes`
@@ -29,13 +34,17 @@ const gradientShift = keyframes`
 `;
 
 const LoginPage = () => {
-  // const { userLoggedIn } = useAuth();
+  const { authError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [formErrors, setFormErrors] = useState({
+    email: '',
+    password: ''
+  });
 
   // Theme colors
   const primaryPurple = '#755dff';
@@ -69,16 +78,53 @@ const LoginPage = () => {
     setShowPassword(!showPassword);
   };
 
+  const validateForm = () => {
+    const errors = {
+      email: '',
+      password: ''
+    };
+    let isValid = true;
+
+    // Validate email
+    if (!email) {
+      errors.email = 'Email is required';
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = 'Email address is invalid';
+      isValid = false;
+    }
+
+    // Validate password
+    if (!password) {
+      errors.password = 'Password is required';
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Clear previous error
+    setErrorMessage('');
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+    
     if (!isSigningIn) {
       setIsSigningIn(true);
       try {
+        console.log('Attempting to sign in with email:', email);
         await doSignInWithEmailAndPassword(email, password);
+        console.log('Sign in successful');
         setIsSignedIn(true);
       } catch (error) {
-        console.log(error)
-        setErrorMessage(error.message);
+        console.error("Sign in error:", error);
+        setErrorMessage(error.message || 'An error occurred during sign in');
       } finally {
         setIsSigningIn(false);
       }
@@ -87,13 +133,20 @@ const LoginPage = () => {
 
   const onGoogleSignIn = async (e) => {
     e.preventDefault();
+    
+    // Clear previous error
+    setErrorMessage('');
+    
     if (!isSigningIn) {
       setIsSigningIn(true);
       try {
+        console.log('Attempting to sign in with Google');
         await doSignInWithGoogle();
+        console.log('Google sign in successful');
         setIsSignedIn(true);
-      } catch (err) {
-        setErrorMessage(err.message);
+      } catch (error) {
+        console.error("Google sign in error:", error);
+        setErrorMessage(error.message || 'An error occurred during Google sign in');
       } finally {
         setIsSigningIn(false);
       }

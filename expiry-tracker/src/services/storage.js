@@ -23,7 +23,12 @@
  *    - Store receipt images for reference
  *    - Implement efficient retrieval
  */
-import { getPantryItems, addItemsToPantry, addItemToPantry, removeItemFromPantry, updatePantryItem } from "../firebase/groceries";
+import { getPantryItems, addItemsToPantry, updatePantryItem, removeItemFromPantry } from "../firebase/groceries";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { app } from "../firebase/firebase";
+
+// Initialize Firebase Storage
+const storage = getStorage(app);
 
 const storageService = {
   // These are just placeholder functions
@@ -32,49 +37,68 @@ const storageService = {
   saveItems: async (userId, purchaseDate, items) => {
     console.log('Storing items in the database:', items);
 
-    updatedItems = items.map(item => {
-      return { "purchaseDate": purchaseDate, ...item };
+    const updatedItems = items.map(item => {
+      return { purchaseDate, ...item };
     });
 
-    addItemsToPantry(userId, updatedItems);
+    return await addItemsToPantry(userId, updatedItems);
   },
   
   getItems: async (userId) => {
     console.log('Retrieving items from the database');
-    // Mock retrieving from database
-    return getPantryItems(userId);
+    return await getPantryItems(userId);
   },
 
   addItem: async (userId, purchaseDate, item) => {
     console.log('Adding item to the database:', item);
-    addItemToPantry(userId, item = { "purchaseDate": purchaseDate, ...item });
+    const updatedItem = { purchaseDate, ...item };
+    return await addItemsToPantry(userId, [updatedItem]);
   },
 
   editItem: async (userId, item) => {
     console.log('Editing item in the database:', item);
-    updatePantryItem(userId, item);
+    return await updatePantryItem(userId, item);
   },
 
   deleteItem: async (userId, item) => {
     console.log('Deleting item from the database:', item);
-    removeItemFromPantry(userId, item);
+    return await removeItemFromPantry(userId, item);
   },
 
   modifyPurchaseDate: async (userId, items, purchaseDate) => {
     console.log('Modifying purchase date for items:', items);
-    for (const item of items) {
-      item.purchaseDate = purchaseDate;
-      updatePantryItem(userId, item)
-    };
+    const updatePromises = items.map(item => {
+      const updatedItem = { ...item, purchaseDate };
+      return updatePantryItem(userId, updatedItem);
+    });
+    
+    return Promise.all(updatePromises);
   },
   
-  saveReceiptImage: async (imageFile) => {
+  saveReceiptImage: async (userId, imageFile) => {
     console.log('Storing receipt image:', imageFile.name);
-    // Mock image storage
-    return { 
-      imageUrl: 'https://example.com/mock-image-path',
-      message: 'Receipt image would be stored'
-    };
+    
+    try {
+      // Create a reference to the file location in Firebase Storage
+      const storageRef = ref(storage, `receipts/${userId}/${Date.now()}_${imageFile.name}`);
+      
+      // Upload the file
+      const snapshot = await uploadBytes(storageRef, imageFile);
+      
+      // Get the download URL
+      const imageUrl = await getDownloadURL(snapshot.ref);
+      
+      return { 
+        imageUrl,
+        message: 'Receipt image uploaded successfully'
+      };
+    } catch (error) {
+      console.error('Error uploading receipt image:', error);
+      return {
+        error: error.message,
+        message: 'Failed to upload receipt image'
+      };
+    }
   }
 };
 

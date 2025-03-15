@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -13,6 +13,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { keyframes } from '@emotion/react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../contexts/authContext';
 
 // Animations
 const gradientShift = keyframes`
@@ -29,6 +30,16 @@ const subtlePulse = keyframes`
 `;
 
 const HomePage = () => {
+  const { currentUser, authError } = useAuth();
+  const [showConfigCheck, setShowConfigCheck] = useState(false);
+  
+  // If there's an auth error, show the config check
+  useEffect(() => {
+    if (authError) {
+      setShowConfigCheck(true);
+    }
+  }, [authError]);
+
   // Define theme colors
   const primaryPurple = '#755dff';
   const secondaryGreen = '#4aeabc';
