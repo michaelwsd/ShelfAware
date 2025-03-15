@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { doCreateUserWithEmailAndPassword } from '../firebase/auth';
+import { Navigate } from 'react-router-dom';
 import { 
   Box, 
   Typography, 
@@ -31,6 +33,7 @@ const SignupPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [signedUp, setSignedUp] = useState(false);
 
   // Theme colors
   const primaryPurple = '#755dff';
@@ -67,9 +70,24 @@ const SignupPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Authentication will be implemented later by your friend
-    console.log('Signup attempted with:', name, email, password);
+    doCreateUserWithEmailAndPassword(email, password)
+      .then((userCredential) => {
+        // Signed up
+        const user = userCredential.user;
+        console.log('User signed up:', user);
+        setSignedUp(true);
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        console.error('Error signing up:', errorCode, errorMessage);
+      });
   };
 
+  if (signedUp) {
+    return <Navigate to="/" replace />;
+  }
+  
   return (
     <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
       <motion.div

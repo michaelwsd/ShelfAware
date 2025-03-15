@@ -78,6 +78,7 @@ const LoginPage = () => {
         await doSignInWithEmailAndPassword(email, password);
         setIsSignedIn(true);
       } catch (error) {
+        console.log(error)
         setErrorMessage(error.message);
       } finally {
         setIsSigningIn(false);
