@@ -23,21 +23,49 @@
  *    - Store receipt images for reference
  *    - Implement efficient retrieval
  */
+import { getPantryItems, addItemsToPantry, addItemToPantry, removeItemFromPantry, updatePantryItem } from "../firebase/groceries";
 
 const storageService = {
   // These are just placeholder functions
   // Implement actual database operations later
   
-  saveItems: async (items) => {
+  saveItems: async (userId, purchaseDate, items) => {
     console.log('Storing items in the database:', items);
-    // Mock saving to database
-    return { success: true, message: 'Items would be saved to the database' };
+
+    updatedItems = items.map(item => {
+      return { "purchaseDate": purchaseDate, ...item };
+    });
+
+    addItemsToPantry(userId, updatedItems);
   },
   
-  getItems: async () => {
+  getItems: async (userId) => {
     console.log('Retrieving items from the database');
     // Mock retrieving from database
-    return [];
+    return getPantryItems(userId);
+  },
+
+  addItem: async (userId, purchaseDate, item) => {
+    console.log('Adding item to the database:', item);
+    addItemToPantry(userId, item = { "id": this.id, "purchaseDate": purchaseDate, ...item });
+  },
+
+  editItem: async (userId, item) => {
+    console.log('Editing item in the database:', item);
+    updatePantryItem(userId, item);
+  },
+
+  deleteItem: async (userId, item) => {
+    console.log('Deleting item from the database:', item);
+    removeItemFromPantry(userId, item);
+  },
+
+  modifyPurchaseDate: async (userId, items, purchaseDate) => {
+    console.log('Modifying purchase date for items:', items);
+    for (const item of items) {
+      item.purchaseDate = purchaseDate;
+      updatePantryItem(userId, item)
+    };
   },
   
   saveReceiptImage: async (imageFile) => {

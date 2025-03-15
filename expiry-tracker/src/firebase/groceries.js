@@ -2,23 +2,15 @@ import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, q
 
 const db = getFirestore();
 
-export const createUserPantry = async (userId) => {
-    const pantryRef = doc(db,`users/${userId}/pantry`);
-    const pantry = { items: [] };
-
-    await setDoc(pantryRef, pantry);
-    return { id: pantryRef.id, ...pantry };
-};
-
 const getUserPantry = async (userId) => {
-    const pantryRef = doc(db, `users/${userId}/pantry`);
+    const pantryRef = doc(db, `users/${userId}/itemList`);
     const pantrySnapshot = await getDoc(pantryRef);
     
     if (!pantrySnapshot.exists()) {
         return null;
     }
 
-    return { id: pantrySnapshot.id, ...pantrySnapshot.data() };
+    return { ...pantrySnapshot.data() };
 };
 
 export const getPantryItems = async (userId) => {
@@ -32,13 +24,27 @@ export const addItemsToPantry = async (userId, items) => {
     }
 };
 
-export const addItemToPantry = async (userId, item) => {
+const addItemToPantry = async (userId, item) => {
     const pantry = await getUserPantry(userId);
     if (!pantry) return null;
 
-    const pantryRef = doc(db, `users/${userId}/pantry`);
-    const updatedItems = [...pantry.items, item];
+    // update user's itemCardinality
+    const itemId = doc(db, `users/${userId}`).nextItemId;
+    updateDoc(doc(db, `users/${userId}`), { itemCardinality: itemCardinality + 1, nextItemId: itemId + 1 });
+
+    const pantryRef = doc(db, `users/${userId}/itemList`);
+    const updatedItems = [...pantry.items, { ...item, id: itemId }];
     
+    await updateDoc(pantryRef, { items: updatedItems });
+};
+
+export const updatePantryItem = async (userId, item) => {
+    const pantry = await getUserPantry(userId);
+    if (!pantry) return null;
+
+    const pantryRef = doc(db, `users/${userId}/itemList`);
+    const updatedItems = pantry.items.map(i => i.id === item.id ? item : i);
+
     await updateDoc(pantryRef, { items: updatedItems });
     return { ...pantry, items: updatedItems };
 };
@@ -47,15 +53,11 @@ export const removeItemFromPantry = async (userId, item) => {
     const pantry = await getUserPantry(userId);
     if (!pantry) return null;
 
-    const pantryRef = doc(db, `users/${userId}/pantry`);
+    updateDoc(doc(db, `users/${userId}`), { itemCardinality: itemCardinality - 1 });
+
+    const pantryRef = doc(db, `users/${userId}/itemList`);
     const updatedItems = pantry.items.filter(i => i !== item);
 
     await updateDoc(pantryRef, { items: updatedItems });
     return { ...pantry, items: updatedItems };
-};
-
-export const deletePantry = async (userId) => {
-    const pantryRef = doc(db, `users/${userId}/pantry`);
-    await deleteDoc(pantryRef);
-    return true;
 };
