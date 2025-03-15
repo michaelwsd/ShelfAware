@@ -120,7 +120,7 @@ const AppLayout = ({ children }) => {
                     borderColor: 'rgba(255,255,255,0.2)'
                   }}
                 >
-                  Logout
+                  Log out
                 </Button>
               ) : (
                 <Button 
@@ -134,7 +134,7 @@ const AppLayout = ({ children }) => {
                     borderColor: 'rgba(255,255,255,0.2)'
                   }}
                 >
-                  Login
+                  Log in
                 </Button>
               )}
             </Box>

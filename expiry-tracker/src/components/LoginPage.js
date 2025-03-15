@@ -258,6 +258,22 @@ const LoginPage = () => {
                 Sign in to track your food expiry dates
               </Typography>
             </motion.div>
+            
+            {/* Display error message */}
+            {errorMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Alert 
+                  severity="error" 
+                  sx={{ mb: 3, borderRadius: 2 }}
+                >
+                  {errorMessage}
+                </Alert>
+              </motion.div>
+            )}
 
             <motion.form 
               onSubmit={handleSubmit}
@@ -287,6 +303,9 @@ const LoginPage = () => {
                     '&:hover fieldset': {
                       borderColor: 'rgba(255,255,255,0.2)',
                     },
+                  },
+                  '& input:-webkit-autofill': {
+                    paddingLeft: '14px',
                   }
                 }}
               />
@@ -316,7 +335,7 @@ const LoginPage = () => {
                   ),
                 }}
                 sx={{ 
-                  mb: errorMessage ? 1 : 4,
+                  mb: 4,
                   '& .MuiOutlinedInput-root': {
                     '& fieldset': {
                       borderColor: 'rgba(255,255,255,0.1)',
@@ -324,17 +343,12 @@ const LoginPage = () => {
                     '&:hover fieldset': {
                       borderColor: 'rgba(255,255,255,0.2)',
                     },
+                  },
+                  '& input:-webkit-autofill': {
+                    paddingLeft: '14px',
                   }
                 }}
               />
-
-              <div style={{ color: "grey" }}>
-                {errorMessage && (
-                  <p className="error">
-                    {errorMessage && <p className="error">{errorMessage.slice(10, errorMessage.length)}</p>}
-                  </p>
-                )}
-              </div>
 
               <Button
                 type="submit"
