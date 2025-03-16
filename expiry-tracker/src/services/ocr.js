@@ -409,7 +409,7 @@ function extractDateFromReceipt(receiptText) {
 
 /**
  * Uses Tesseract.js to extract text from an image with enhanced settings.
- * @param {File} imageFile - The receipt image file
+ * @param {File|string} imageFile - The receipt image file or base64 data URI
  * @returns {Promise<string>} - The extracted OCR text.
  */
 async function extractTextWithTesseract(imageFile) {
@@ -422,7 +422,24 @@ async function extractTextWithTesseract(imageFile) {
       tessedit_ocr_engine_mode: '1', // Use neural net mode for better accuracy
     };
     
-    // Using the File object directly with Tesseract
+    // Check if we received a base64 string (from local storage fallback)
+    if (typeof imageFile === 'string' && imageFile.startsWith('data:')) {
+      console.log('Processing base64 image data from local storage fallback');
+      
+      const { data: { text } } = await Tesseract.recognize(
+        imageFile,
+        "eng",
+        {
+          logger: m => console.log(m.status, m.progress),
+          langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+          ...config
+        }
+      );
+      
+      return text;
+    }
+    
+    // Otherwise use the File object directly with Tesseract
     const { data: { text } } = await Tesseract.recognize(imageFile, "eng", {
       logger: m => console.log(m.status, m.progress), // View progress updates
       langPath: 'https://tessdata.projectnaptha.com/4.0.0',
@@ -464,16 +481,29 @@ For PERISHABLE items:
 
 For NON-PERISHABLE items:
 1. Identify the name
-2. Determine the category (toiletries, household, cleaning, etc.)
+2. Determine the category (toiletries, household, cleaning, pet, etc.)
 3. Extract quantity if available
 4. Extract price if available
 5. Mark them explicitly as non-perishable with no expiry date
 
 Use these guidelines to determine if an item is perishable:
-- Perishable: All fresh foods, dairy, meat, produce, bakery, eggs, refrigerated items
-- Non-perishable: Toiletries, cleaning supplies, household items, dry goods
+- Perishable: 
+  * Fresh foods, dairy, meat, produce, bakery, eggs, refrigerated items
+  * Canned foods (still perishable but long shelf life)
+  * Frozen foods
+  * Snacks with limited shelf life
+  * Most edible food items
 
-Also keep in mind that items such as canned goods have very long expiries and are still considered perishable.
+- Non-perishable: 
+  * Toiletries (soap, shampoo, toothpaste)
+  * Cleaning supplies
+  * Household items (paper towels, etc.)
+  * Pet supplies (non-food items)
+  * Other non-food items
+
+Categorize items into these categories:
+- Food categories: dairy, meat, produce, bakery, pantry, frozen, canned, snacks, beverages
+- Non-food categories: toiletries, household, pet, other
 
 For perishable items, use these reasonable defaults for expiry periods if specific information is unavailable:
 - Dairy products: 7-14 days
@@ -481,8 +511,9 @@ For perishable items, use these reasonable defaults for expiry periods if specif
 - Fresh produce: 5-7 days
 - Bakery items: 3-7 days
 - Eggs: 21-30 days
-- Packaged goods: 90+ days
-- Long shelf life items: 365+ days
+- Frozen foods: 90-180 days
+- Canned goods: 365+ days
+- Beverages: 7-30 days depending on type
 
 Return a JSON object with this structure:
 {
@@ -490,15 +521,17 @@ Return a JSON object with this structure:
   "items": [
     {
       "name": "Item name",
-      "category": "Food or product category",
-      "quantity": "Quantity (or null)",
-      "price": "Price (or null)",
+      "category": "Food or product category (one of the categories listed above)",
+      "quantity": "Quantity (or '1' if not specified)",
+      "price": "Price (or '$0.00' if not specified)",
       "isPerishable": true/false,
       "expiryDays": Number of days until expiry (null for non-perishable),
       "expiryDate": "YYYY-MM-DD (null for non-perishable)"
     }
   ]
 }
+
+For non-perishable items, explicitly set isPerishable to false, and set expiryDays and expiryDate to null.
 
 Receipt text:
 ${receiptText}

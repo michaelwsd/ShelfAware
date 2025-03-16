@@ -11,16 +11,40 @@ import {
   ListItemText,
   ListItemIcon,
   Chip,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Alert,
+  Pagination,
+  Stack,
+  Snackbar
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import TimerIcon from '@mui/icons-material/Timer';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { keyframes } from '@emotion/react';
 import { useAuth } from '../contexts/authContext';
-import storageService from '../services/storage';
+import { dataService } from '../firebase/serviceSwitcher';
 
 // Animations
 const countUp = keyframes`
@@ -41,6 +65,54 @@ const accentOrange = '#ff9757';
 const dangerRed = '#ff5c5c';
 const textPrimary = '#ffffff';
 
+// Utility function to safely get date string from potentially invalid dates
+const safeFormatDate = (dateValue) => {
+  try {
+    // First check if it's a valid Date object
+    if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+      return dateValue.toISOString().split('T')[0];
+    }
+    
+    // If it's a string or number, try to create a valid date
+    if (dateValue) {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    }
+    
+    // Return empty string if date is invalid
+    return '';
+  } catch (error) {
+    console.warn('Error formatting date:', error, dateValue);
+    return '';
+  }
+};
+
+// Add a helper function for safe date formatting
+const safeFormatDisplayDate = (dateValue) => {
+  try {
+    // First check if it's a valid Date object
+    if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+      return dateValue.toLocaleDateString();
+    }
+    
+    // If it's a string or number, try to create a valid date
+    if (dateValue) {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString();
+      }
+    }
+    
+    // Return placeholder if date is invalid
+    return '—';
+  } catch (error) {
+    console.warn('Error formatting display date:', error, dateValue);
+    return '—';
+  }
+};
+
 const Dashboard = () => {
   const { currentUser } = useAuth();
   const [animateStats, setAnimateStats] = useState(false);
@@ -49,31 +121,84 @@ const Dashboard = () => {
   const [items, setItems] = useState([]);
   const [expiringItems, setExpiringItems] = useState([]);
   const [recentItems, setRecentItems] = useState([]);
+  const [viewAllOpen, setViewAllOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [currentItem, setCurrentItem] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
+  const [filter, setFilter] = useState('all');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   useEffect(() => {
     const fetchItems = async () => {
       if (currentUser) {
         try {
           setLoading(true);
-          const fetchedItems = await storageService.getItems(currentUser.uid);
+          const fetchedItems = await dataService.getItems(currentUser.uid);
           
           if (fetchedItems && fetchedItems.length > 0) {
             // Process items
             const now = new Date();
             const processedItems = fetchedItems.map(item => {
               // Convert string dates to Date objects if needed
-              const expiryDate = item.expiryDate instanceof Date 
-                ? item.expiryDate 
-                : new Date(item.expiryDate);
+              let expiryDate;
+              let daysLeft = null;
               
-              // Calculate days left
-              const timeDiff = expiryDate.getTime() - now.getTime();
-              const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+              try {
+                // Safely convert to date object
+                if (item.expiryDate instanceof Date) {
+                  expiryDate = item.expiryDate;
+                } else if (item.expiryDate) {
+                  expiryDate = new Date(item.expiryDate);
+                  // Check if valid date was created
+                  if (isNaN(expiryDate.getTime())) {
+                    expiryDate = null;
+                  }
+                } else {
+                  expiryDate = null;
+                }
+                
+                // Only calculate days left if we have a valid expiry date
+                if (expiryDate) {
+                  const timeDiff = expiryDate.getTime() - now.getTime();
+                  daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                }
+              } catch (error) {
+                console.warn('Error processing expiry date:', error, item);
+                expiryDate = null;
+                daysLeft = null;
+              }
+              
+              // Safely convert purchase date
+              let purchaseDate;
+              try {
+                if (item.purchaseDate instanceof Date) {
+                  purchaseDate = item.purchaseDate;
+                } else if (item.purchaseDate) {
+                  purchaseDate = new Date(item.purchaseDate);
+                  // Check if valid date was created
+                  if (isNaN(purchaseDate.getTime())) {
+                    purchaseDate = now; // Default to today
+                  }
+                } else {
+                  purchaseDate = now; // Default to today
+                }
+              } catch (error) {
+                console.warn('Error processing purchase date:', error, item);
+                purchaseDate = now; // Default to today
+              }
+              
+              // Ensure isPerishable property exists (default to true if not specified)
+              const isPerishable = item.isPerishable !== undefined ? item.isPerishable : true;
               
               return {
                 ...item,
                 expiryDate,
-                daysLeft
+                daysLeft,
+                isPerishable,
+                purchaseDate
               };
             });
             
@@ -81,7 +206,7 @@ const Dashboard = () => {
             
             // Filter expiring items (less than 4 days)
             const expiring = processedItems
-              .filter(item => item.daysLeft <= 3)
+              .filter(item => item.isPerishable && item.daysLeft <= 3)
               .sort((a, b) => a.daysLeft - b.daysLeft);
             setExpiringItems(expiring);
             
@@ -108,9 +233,20 @@ const Dashboard = () => {
               categories,
               saved: Math.floor(processedItems.length * 0.4) // Just an estimate for saved items
             });
+          } else {
+            // No items found, clear all arrays
+            setItems([]);
+            setExpiringItems([]);
+            setRecentItems([]);
+            setStatValues({ total: 0, categories: 0, saved: 0 });
           }
         } catch (error) {
           console.error("Error fetching items:", error);
+          setNotification({
+            open: true,
+            message: `Error loading items: ${error.message}`,
+            severity: 'error'
+          });
         } finally {
           setLoading(false);
         }
@@ -120,7 +256,7 @@ const Dashboard = () => {
     };
     
     fetchItems();
-  }, [currentUser]);
+  }, [currentUser, refreshTrigger]);
   
   useEffect(() => {
     // Start animation after component mounts
@@ -160,6 +296,207 @@ const Dashboard = () => {
         damping: 15
       }
     }
+  };
+
+  // Get filtered items based on current filter
+  const getFilteredItems = () => {
+    switch(filter) {
+      case 'expiring':
+        return items.filter(item => item.isPerishable && item.daysLeft <= 7);
+      case 'expired':
+        return items.filter(item => item.isPerishable && item.daysLeft < 0);
+      case 'perishable':
+        return items.filter(item => item.isPerishable === true);
+      case 'non-perishable':
+        return items.filter(item => item.isPerishable === false);
+      case 'dairy':
+      case 'meat':
+      case 'produce':
+      case 'bakery':
+      case 'pantry':
+      case 'frozen':
+      case 'canned':
+      case 'snacks':
+      case 'beverages':
+      case 'toiletries':
+      case 'household':
+      case 'pet':
+      case 'other':
+      case 'uncategorized':
+        return items.filter(item => item.category === filter);
+      default:
+        return items;
+    }
+  };
+
+  // Pagination logic
+  const filteredItems = getFilteredItems();
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const currentItems = filteredItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Handle page change
+  const handlePageChange = (event, value) => {
+    setCurrentPage(value);
+  };
+
+  // Open edit dialog for an item
+  const handleEditItem = (item) => {
+    setCurrentItem({...item});
+    setEditDialogOpen(true);
+  };
+
+  // Save edited item
+  const handleSaveEdit = async () => {
+    if (!currentItem) return;
+    
+    try {
+      setLoading(true);
+      await dataService.editItem(currentUser.uid, currentItem);
+      
+      // Update local state
+      setItems(items.map(item => 
+        item.id === currentItem.id ? currentItem : item
+      ));
+      
+      setNotification({
+        open: true,
+        message: `${currentItem.name} updated successfully`,
+        severity: 'success'
+      });
+      
+      setEditDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating item:", error);
+      setNotification({
+        open: true,
+        message: `Error updating item: ${error.message}`,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete a single item
+  const handleDeleteItem = async (item) => {
+    try {
+      setLoading(true);
+      await dataService.deleteItem(currentUser.uid, item);
+      
+      // Update local state
+      setItems(items.filter(i => i.id !== item.id));
+      
+      setNotification({
+        open: true,
+        message: `${item.name} deleted successfully`,
+        severity: 'success'
+      });
+      
+      // Trigger a refresh to ensure database is in sync
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      setNotification({
+        open: true,
+        message: `Error deleting item: ${error.message}`,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete all items
+  const handleDeleteAllItems = async () => {
+    console.log("handleDeleteAllItems called, items length:", items.length);
+    if (!items.length) {
+      console.log("No items to delete, returning early");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      console.log("Setting loading state to true");
+      
+      // Ensure we have a user ID
+      if (!currentUser || !currentUser.uid) {
+        throw new Error("No authenticated user found");
+      }
+      
+      // Check if our service has a batch delete function
+      console.log("dataService.deleteAllItems exists:", typeof dataService.deleteAllItems === 'function');
+      
+      let deleteResult;
+      if (typeof dataService.deleteAllItems === 'function') {
+        // Use the bulk operation if available
+        console.log("Attempting to delete all items for user:", currentUser.uid);
+        try {
+          deleteResult = await dataService.deleteAllItems(currentUser.uid);
+          console.log("Delete all items result:", deleteResult);
+        } catch (deleteError) {
+          console.error("Error in dataService.deleteAllItems:", deleteError);
+          throw deleteError;
+        }
+      } else {
+        // Fallback to deleting each item
+        console.log("deleteAllItems not available, falling back to individual deletes");
+        const deletePromises = items.map(item => 
+          dataService.deleteItem(currentUser.uid, item)
+        );
+        
+        await Promise.all(deletePromises);
+        console.log("All individual delete promises resolved");
+        deleteResult = { success: true, message: `Deleted ${items.length} items individually` };
+      }
+      
+      // Check if the operation was successful
+      if (deleteResult && deleteResult.success === false) {
+        throw new Error(deleteResult.message || "Failed to delete items");
+      }
+      
+      // Clear local state
+      console.log("Clearing local state arrays");
+      setItems([]);
+      setExpiringItems([]);
+      setRecentItems([]);
+      setStatValues({ total: 0, categories: 0, saved: 0 });
+      
+      // Show success notification with the result message
+      setNotification({
+        open: true,
+        message: deleteResult?.message || "All items deleted successfully",
+        severity: 'success'
+      });
+      
+      console.log("Triggering refresh to update UI");
+      // Trigger a refresh to ensure database is in sync
+      setRefreshTrigger(prev => prev + 1);
+      
+      setDeleteConfirmOpen(false);
+      setCurrentPage(1); // Reset to first page
+    } catch (error) {
+      console.error("Error deleting all items:", error);
+      setNotification({
+        open: true,
+        message: `Error deleting items: ${error.message || "Unknown error"}`,
+        severity: 'error'
+      });
+      
+      // Still trigger a refresh to ensure UI reflects the current state
+      setRefreshTrigger(prev => prev + 1);
+    } finally {
+      console.log("Delete operation complete, setting loading to false");
+      setLoading(false);
+    }
+  };
+
+  // Close notification
+  const handleCloseNotification = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setNotification({ ...notification, open: false });
   };
 
   return (
@@ -521,28 +858,424 @@ const Dashboard = () => {
             <Typography variant="h6" color="text.primary">
               All Tracked Items
             </Typography>
-            <Button 
-              variant="outlined" 
-              size="small"
-              sx={{
-                borderColor: 'rgba(255,255,255,0.1)',
-                color: textPrimary,
-                '&:hover': { borderColor: primaryPurple, bgcolor: 'rgba(117,93,255,0.05)' }
-              }}
-            >
-              View All
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button 
+                variant="outlined" 
+                color="error"
+                size="small"
+                startIcon={<DeleteSweepIcon />}
+                onClick={() => setDeleteConfirmOpen(true)}
+                disabled={!items.length}
+                sx={{
+                  borderColor: 'rgba(255,80,80,0.3)',
+                  '&:hover': { borderColor: dangerRed, bgcolor: 'rgba(255,80,80,0.05)' }
+                }}
+              >
+                Delete All
+              </Button>
+              
+              <Button 
+                variant="outlined" 
+                size="small"
+                startIcon={<FilterListIcon />}
+                onClick={() => setViewAllOpen(!viewAllOpen)}
+                sx={{
+                  borderColor: 'rgba(255,255,255,0.1)',
+                  color: textPrimary,
+                  '&:hover': { borderColor: primaryPurple, bgcolor: 'rgba(117,93,255,0.05)' }
+                }}
+              >
+                {viewAllOpen ? 'Hide' : 'View All'}
+              </Button>
+            </Box>
           </Box>
           
           <Divider sx={{ bgcolor: 'rgba(255,255,255,0.05)', mb: 2 }} />
           
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-            <Typography color="text.secondary" align="center">
-              This is a placeholder for all tracked items. In the full application, this would show a paginated list or grid of all food items being tracked, with filtering and sorting options.
-            </Typography>
-          </Box>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress size={40} />
+            </Box>
+          ) : !items.length ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+              <Typography color="text.secondary" align="center">
+                No items found. Upload receipts to start tracking your food.
+              </Typography>
+            </Box>
+          ) : !viewAllOpen ? (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {items.slice(0, 5).map(item => (
+                <Chip 
+                  key={item.id}
+                  label={item.name} 
+                  variant="outlined"
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: 'rgba(255,255,255,0.05)',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+                  }}
+                />
+              ))}
+              {items.length > 5 && (
+                <Chip 
+                  label={`+${items.length - 5} more`}
+                  sx={{ 
+                    bgcolor: 'rgba(117,93,255,0.1)', 
+                    color: primaryPurple,
+                    '&:hover': { bgcolor: 'rgba(117,93,255,0.2)' }
+                  }}
+                  onClick={() => setViewAllOpen(true)}
+                />
+              )}
+            </Box>
+          ) : (
+            <Box>
+              {/* Updated Filters with more options */}
+              <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Chip 
+                  label="All" 
+                  color={filter === 'all' ? 'primary' : 'default'}
+                  variant={filter === 'all' ? 'filled' : 'outlined'}
+                  onClick={() => setFilter('all')}
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: filter === 'all' ? undefined : 'rgba(255,255,255,0.05)',
+                  }}
+                />
+                <Chip 
+                  label="Perishable" 
+                  color={filter === 'perishable' ? 'warning' : 'default'}
+                  variant={filter === 'perishable' ? 'filled' : 'outlined'}
+                  onClick={() => setFilter('perishable')}
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: filter === 'perishable' ? undefined : 'rgba(255,255,255,0.05)',
+                  }}
+                />
+                <Chip 
+                  label="Non-Perishable" 
+                  color={filter === 'non-perishable' ? 'success' : 'default'}
+                  variant={filter === 'non-perishable' ? 'filled' : 'outlined'}
+                  onClick={() => setFilter('non-perishable')}
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: filter === 'non-perishable' ? undefined : 'rgba(255,255,255,0.05)',
+                  }}
+                />
+                <Chip 
+                  label="Expiring Soon" 
+                  color={filter === 'expiring' ? 'warning' : 'default'}
+                  variant={filter === 'expiring' ? 'filled' : 'outlined'}
+                  onClick={() => setFilter('expiring')}
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: filter === 'expiring' ? undefined : 'rgba(255,255,255,0.05)',
+                  }}
+                />
+                <Chip 
+                  label="Expired" 
+                  color={filter === 'expired' ? 'error' : 'default'}
+                  variant={filter === 'expired' ? 'filled' : 'outlined'}
+                  onClick={() => setFilter('expired')}
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: filter === 'expired' ? undefined : 'rgba(255,255,255,0.05)',
+                  }}
+                />
+                <Chip 
+                  label="Dairy" 
+                  variant={filter === 'dairy' ? 'filled' : 'outlined'}
+                  color={filter === 'dairy' ? 'secondary' : 'default'}
+                  onClick={() => setFilter('dairy')}
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: filter === 'dairy' ? undefined : 'rgba(255,255,255,0.05)',
+                  }}
+                />
+                <Chip 
+                  label="Produce" 
+                  variant={filter === 'produce' ? 'filled' : 'outlined'}
+                  color={filter === 'produce' ? 'success' : 'default'}
+                  onClick={() => setFilter('produce')}
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: filter === 'produce' ? undefined : 'rgba(255,255,255,0.05)',
+                  }}
+                />
+                <Chip 
+                  label="Meat" 
+                  variant={filter === 'meat' ? 'filled' : 'outlined'}
+                  color={filter === 'meat' ? 'default' : 'default'}
+                  onClick={() => setFilter('meat')}
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: filter === 'meat' ? undefined : 'rgba(255,255,255,0.05)',
+                  }}
+                />
+              </Box>
+              
+              <TableContainer sx={{ mb: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item Name</TableCell>
+                      <TableCell>Category</TableCell>
+                      <TableCell align="center">Type</TableCell>
+                      <TableCell align="right">Quantity</TableCell>
+                      <TableCell align="right">Price</TableCell>
+                      <TableCell align="center">Expiry Date</TableCell>
+                      <TableCell align="center">Days Left</TableCell>
+                      <TableCell align="right">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {currentItems.map((item) => (
+                      <TableRow key={item.id} hover>
+                        <TableCell>{item.name}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={item.category} 
+                            size="small" 
+                            sx={{ 
+                              bgcolor: 'rgba(255,255,255,0.05)',
+                              color: 'text.secondary',
+                              fontSize: '0.7rem'
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip 
+                            label={item.isPerishable ? 'Perishable' : 'Non-perishable'} 
+                            size="small"
+                            color={item.isPerishable ? 'warning' : 'success'}
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        </TableCell>
+                        <TableCell align="right">{item.quantity}</TableCell>
+                        <TableCell align="right">{item.price}</TableCell>
+                        <TableCell align="center">
+                          {item.isPerishable ? safeFormatDisplayDate(item.expiryDate) : '—'}
+                        </TableCell>
+                        <TableCell align="center">
+                          {item.isPerishable ? (
+                            <Chip 
+                              label={item.daysLeft} 
+                              size="small"
+                              color={
+                                item.daysLeft <= 0 ? 'error' :
+                                item.daysLeft <= 3 ? 'warning' : 'default'
+                              }
+                              sx={{ 
+                                minWidth: '36px',
+                                fontSize: '0.7rem'
+                              }}
+                            />
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          <IconButton 
+                            size="small"
+                            onClick={() => handleEditItem(item)}
+                            sx={{ mr: 1 }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteItem(item)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                  <Pagination 
+                    count={totalPages} 
+                    page={currentPage} 
+                    onChange={handlePageChange}
+                    color="primary"
+                  />
+                </Box>
+              )}
+            </Box>
+          )}
         </Paper>
       </motion.div>
+      
+      {/* Edit Item Dialog - Updated with more category options */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit {currentItem?.name}</DialogTitle>
+        <DialogContent>
+          {currentItem && (
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12}>
+                <TextField
+                  label="Item Name"
+                  value={currentItem.name}
+                  onChange={(e) => setCurrentItem({...currentItem, name: e.target.value})}
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    value={currentItem.category}
+                    label="Category"
+                    onChange={(e) => setCurrentItem({...currentItem, category: e.target.value})}
+                  >
+                    <MenuItem value="dairy">Dairy</MenuItem>
+                    <MenuItem value="meat">Meat</MenuItem>
+                    <MenuItem value="produce">Produce</MenuItem>
+                    <MenuItem value="bakery">Bakery</MenuItem>
+                    <MenuItem value="pantry">Pantry</MenuItem>
+                    <MenuItem value="frozen">Frozen</MenuItem>
+                    <MenuItem value="canned">Canned</MenuItem>
+                    <MenuItem value="snacks">Snacks</MenuItem>
+                    <MenuItem value="beverages">Beverages</MenuItem>
+                    <MenuItem value="toiletries">Toiletries</MenuItem>
+                    <MenuItem value="household">Household</MenuItem>
+                    <MenuItem value="pet">Pet</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                    <MenuItem value="uncategorized">Uncategorized</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Type</InputLabel>
+                  <Select
+                    value={currentItem.isPerishable}
+                    label="Type"
+                    onChange={(e) => setCurrentItem({...currentItem, isPerishable: e.target.value})}
+                  >
+                    <MenuItem value={true}>Perishable</MenuItem>
+                    <MenuItem value={false}>Non-Perishable</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Quantity"
+                  value={currentItem.quantity}
+                  onChange={(e) => setCurrentItem({...currentItem, quantity: e.target.value})}
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Price"
+                  value={currentItem.price}
+                  onChange={(e) => setCurrentItem({...currentItem, price: e.target.value})}
+                  fullWidth
+                />
+              </Grid>
+              {/* Only show expiry options if the item is perishable */}
+              {currentItem.isPerishable && (
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="Expiry Days"
+                      type="number"
+                      value={currentItem.expiryDays}
+                      onChange={(e) => {
+                        const days = parseInt(e.target.value);
+                        const purchaseDate = currentItem.purchaseDate instanceof Date 
+                          ? currentItem.purchaseDate 
+                          : new Date(currentItem.purchaseDate);
+                        const newExpiryDate = new Date(purchaseDate);
+                        newExpiryDate.setDate(newExpiryDate.getDate() + days);
+                        
+                        setCurrentItem({
+                          ...currentItem, 
+                          expiryDays: days,
+                          expiryDate: newExpiryDate
+                        });
+                      }}
+                      fullWidth
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="Expiry Date"
+                      type="date"
+                      value={safeFormatDate(currentItem.expiryDate)}
+                      onChange={(e) => {
+                        const newDate = new Date(e.target.value);
+                        const purchaseTime = currentItem.purchaseDate instanceof Date 
+                          ? currentItem.purchaseDate 
+                          : new Date(currentItem.purchaseDate);
+                        const timeDiff = newDate.getTime() - purchaseTime.getTime();
+                        const daysDiff = Math.round(timeDiff / (1000 * 3600 * 24));
+                        
+                        setCurrentItem({
+                          ...currentItem,
+                          expiryDate: newDate,
+                          expiryDays: daysDiff
+                        });
+                      }}
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                    />
+                  </Grid>
+                </>
+              )}
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={handleSaveEdit} color="primary" variant="contained">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>Delete All Items?</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            This action cannot be undone. All {items.length} items will be permanently deleted from your account.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteAllItems} color="error" variant="contained">
+            Delete All
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Notifications */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+      >
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity} 
+          sx={{ width: '100%' }}
+          variant="filled"
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

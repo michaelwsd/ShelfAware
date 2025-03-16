@@ -26,9 +26,66 @@
 import { getPantryItems, addItemsToPantry, updatePantryItem, removeItemFromPantry } from "../firebase/groceries";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "../firebase/firebase";
+import { 
+  getFirestore, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  writeBatch, 
+  doc, 
+  getDoc, 
+  updateDoc 
+} from "firebase/firestore";
 
 // Initialize Firebase Storage
 const storage = getStorage(app);
+// Initialize Firestore
+const db = getFirestore(app);
+
+// Check if running in development
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+// For local development testing when Firebase Storage has CORS issues
+const saveImageToLocalStorage = (userId, imageFile) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Data = reader.result;
+      // Store the image in localStorage (only for testing!)
+      try {
+        // Create a key for this image
+        const imageKey = `local_receipt_${userId}_${Date.now()}`;
+        // Store the metadata
+        localStorage.setItem(imageKey + '_meta', JSON.stringify({
+          name: imageFile.name,
+          type: imageFile.type,
+          size: imageFile.size,
+          timestamp: Date.now(),
+          userId
+        }));
+        
+        // Note: localStorage has size limits (~5MB), so this only works for testing with small images
+        localStorage.setItem(imageKey, base64Data);
+        
+        console.log('Image temporarily saved to localStorage for testing');
+        
+        resolve({
+          imageUrl: base64Data,
+          localStorageKey: imageKey,
+          message: 'Receipt image saved locally (Development mode)'
+        });
+      } catch (e) {
+        console.error('Error saving to localStorage:', e);
+        resolve({
+          error: 'Failed to save locally: ' + e.message,
+          message: 'Local storage error (possibly size exceeded)'
+        });
+      }
+    };
+    reader.readAsDataURL(imageFile);
+  });
+};
 
 const storageService = {
   // These are just placeholder functions
@@ -65,6 +122,72 @@ const storageService = {
     return await removeItemFromPantry(userId, item);
   },
 
+  deleteAllItems: async (userId) => {
+    console.log('Deleting all items for user:', userId);
+    
+    // Check for valid userId
+    if (!userId) {
+      console.error('Error: No user ID provided for deleteAllItems');
+      return { success: false, message: 'No user ID provided' };
+    }
+    
+    try {
+      // We need to update the pantry document directly, since items are stored
+      // in a single document at users/{userId}/itemList/pantry instead of
+      // individual documents in a collection.
+      console.log('Getting pantry document reference');
+      const pantryRef = doc(db, `users/${userId}/itemList/pantry`);
+      
+      // Get the current pantry document
+      const pantrySnapshot = await getDoc(pantryRef);
+      
+      if (!pantrySnapshot.exists()) {
+        console.log('Pantry document does not exist');
+        return { success: true, message: 'No items to delete' };
+      }
+      
+      const pantryData = pantrySnapshot.data();
+      const itemCount = pantryData?.items?.length || 0;
+      
+      console.log(`Found ${itemCount} items to delete`);
+      
+      if (itemCount === 0) {
+        return { success: true, message: 'No items to delete' };
+      }
+      
+      // Update the pantry document with an empty items array
+      await updateDoc(pantryRef, { items: [] });
+      
+      // Also update the user's itemCardinality
+      const userRef = doc(db, `users/${userId}`);
+      await updateDoc(userRef, { itemCardinality: 0 });
+      
+      console.log(`Successfully deleted ${itemCount} items`);
+      
+      return { 
+        success: true, 
+        message: `Deleted ${itemCount} items successfully` 
+      };
+    } catch (error) {
+      console.error('Error deleting all items:', error);
+      
+      // Provide detailed error information
+      let errorDetails = '';
+      if (error.code) {
+        errorDetails += ` (Code: ${error.code})`;
+      }
+      if (error.message) {
+        errorDetails += ` - ${error.message}`;
+      }
+      
+      return { 
+        success: false, 
+        message: `Failed to delete items${errorDetails}`,
+        error: error
+      };
+    }
+  },
+  
   modifyPurchaseDate: async (userId, items, purchaseDate) => {
     console.log('Modifying purchase date for items:', items);
     const updatePromises = items.map(item => {
@@ -78,15 +201,43 @@ const storageService = {
   saveReceiptImage: async (userId, imageFile) => {
     console.log('Storing receipt image:', imageFile.name);
     
+    // If in development and we want to use local storage for testing
+    const useLocalStorageFallback = isDevelopment && localStorage.getItem('useLocalStorageFallback') === 'true';
+    
+    if (useLocalStorageFallback) {
+      console.log('Using localStorage fallback for development testing');
+      return saveImageToLocalStorage(userId, imageFile);
+    }
+    
     try {
-      // Create a reference to the file location in Firebase Storage
-      const storageRef = ref(storage, `receipts/${userId}/${Date.now()}_${imageFile.name}`);
+      // Use a more reliable naming scheme for the file
+      const safeFileName = encodeURIComponent(imageFile.name).replace(/%20/g, '_');
+      const timestamp = Date.now();
+      const fileRef = `receipts/${userId}/${timestamp}_${safeFileName}`;
       
-      // Upload the file
-      const snapshot = await uploadBytes(storageRef, imageFile);
+      console.log('Creating storage reference:', fileRef);
+      
+      // Create a reference to the file location in Firebase Storage
+      const storageRef = ref(storage, fileRef);
+      
+      // Add custom metadata to potentially help with CORS
+      const metadata = {
+        contentType: imageFile.type,
+        customMetadata: {
+          'uploaded-by': userId,
+          'timestamp': timestamp.toString()
+        }
+      };
+      
+      console.log('Starting upload with metadata:', metadata);
+      
+      // Upload the file with metadata
+      const snapshot = await uploadBytes(storageRef, imageFile, metadata);
+      console.log('Upload completed successfully:', snapshot);
       
       // Get the download URL
       const imageUrl = await getDownloadURL(snapshot.ref);
+      console.log('Generated download URL:', imageUrl);
       
       return { 
         imageUrl,
@@ -94,9 +245,37 @@ const storageService = {
       };
     } catch (error) {
       console.error('Error uploading receipt image:', error);
+      
+      // Enhanced error logging for debugging
+      let errorMessage = 'Failed to upload receipt image';
+      if (error.code) {
+        errorMessage += ` (Code: ${error.code})`;
+      }
+      
+      if (error.serverResponse) {
+        console.error('Server response:', error.serverResponse);
+        errorMessage += ` - Server error: ${JSON.stringify(error.serverResponse)}`;
+      }
+      
+      // If it's a CORS error, provide helpful information
+      if (error.message && error.message.includes('CORS')) {
+        console.error('CORS error detected. Please ensure Firebase Storage CORS is configured properly');
+        errorMessage = 'CORS error: Your Firebase Storage needs CORS configuration. Please check the Firebase console.';
+        
+        // In development, offer to fall back to localStorage for testing
+        if (isDevelopment) {
+          console.log('Offering to use localStorage fallback for future uploads');
+          localStorage.setItem('useLocalStorageFallback', 'true');
+          
+          // Also try to save this image locally as a fallback
+          return saveImageToLocalStorage(userId, imageFile);
+        }
+      }
+      
       return {
-        error: error.message,
-        message: 'Failed to upload receipt image'
+        error: errorMessage,
+        originalError: error.message,
+        code: error.code || 'unknown'
       };
     }
   }

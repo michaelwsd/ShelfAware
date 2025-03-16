@@ -6,7 +6,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAo60vmdijIx9Q2Gdsj_XDAJ5QtNWkG7ZM",
   authDomain: "foodwaste-5b731.firebaseapp.com",
   projectId: "foodwaste-5b731",
-  storageBucket: "foodwaste-5b731.firebasestorage.app",
+  storageBucket: "foodwaste-5b731.appspot.com",
   messagingSenderId: "593971518918",
   appId: "1:593971518918:web:545af5817cfa23b1aca6c7",
   measurementId: "G-GDDMMR4MS6"

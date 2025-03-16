@@ -20,6 +20,7 @@ import UploadPage from './components/UploadPage';
 import HomePage from './components/HomePage';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
+import FirestoreBlockDetector from './components/FirestoreBlockDetector';
 import { useAuth } from './contexts/authContext';
 import { auth } from './firebase/firebase';
 
@@ -144,6 +145,12 @@ const AppLayout = ({ children }) => {
       
       {/* Main Content */}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Add FirestoreBlockDetector in development mode */}
+        {process.env.NODE_ENV === 'development' && !isAuthPage && (
+          <Container maxWidth="xl" sx={{ mt: 2 }}>
+            <FirestoreBlockDetector />
+          </Container>
+        )}
         {children}
       </Box>
       
