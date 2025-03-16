@@ -121,6 +121,7 @@ const Dashboard = () => {
   const [items, setItems] = useState([]);
   const [expiringItems, setExpiringItems] = useState([]);
   const [recentItems, setRecentItems] = useState([]);
+  const [savedItems, setSavedItems] = useState([]);
   const [viewAllOpen, setViewAllOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -198,7 +199,11 @@ const Dashboard = () => {
                 expiryDate,
                 daysLeft,
                 isPerishable,
-                purchaseDate
+                purchaseDate,
+                // Make sure quantity is a number
+                quantity: typeof item.quantity === 'number' ? item.quantity : Number(item.quantity) || 1,
+                // Add saved property if it doesn't exist
+                saved: item.saved || false
               };
             });
             
@@ -206,8 +211,14 @@ const Dashboard = () => {
             
             // Filter expiring items (less than 4 days)
             const expiring = processedItems
-              .filter(item => item.isPerishable && item.daysLeft <= 3)
-              .sort((a, b) => a.daysLeft - b.daysLeft);
+              .filter(item => item.isPerishable && (item.daysLeft <= 3 || (item.saved && item.daysLeft !== null && item.daysLeft <= 3)))
+              .sort((a, b) => {
+                // Sort saved items after non-saved items
+                if (a.saved && !b.saved) return 1;
+                if (!a.saved && b.saved) return -1;
+                // Then sort by days left
+                return a.daysLeft - b.daysLeft;
+              });
             setExpiringItems(expiring);
             
             // Get recent items (added in the last 7 days)
@@ -220,24 +231,33 @@ const Dashboard = () => {
                 return daysSincePurchase <= 7;
               })
               .sort((a, b) => {
+                // Sort saved items after non-saved items
+                if (a.saved && !b.saved) return 1;
+                if (!a.saved && b.saved) return -1;
+                // Then sort by most recent first
                 const dateA = a.purchaseDate instanceof Date ? a.purchaseDate : new Date(a.purchaseDate);
                 const dateB = b.purchaseDate instanceof Date ? b.purchaseDate : new Date(b.purchaseDate);
-                return dateB - dateA; // Sort by most recent first
+                return dateB - dateA;
               });
             setRecentItems(recent);
+            
+            // Get saved items
+            const saved = processedItems.filter(item => item.saved);
+            setSavedItems(saved);
             
             // Update stats
             const categories = new Set(processedItems.map(item => item.category)).size;
             setStatValues({
               total: processedItems.length,
               categories,
-              saved: Math.floor(processedItems.length * 0.4) // Just an estimate for saved items
+              saved: saved.length // Use actual count of saved items
             });
           } else {
             // No items found, clear all arrays
             setItems([]);
             setExpiringItems([]);
             setRecentItems([]);
+            setSavedItems([]);
             setStatValues({ total: 0, categories: 0, saved: 0 });
           }
         } catch (error) {
@@ -309,6 +329,8 @@ const Dashboard = () => {
         return items.filter(item => item.isPerishable === true);
       case 'non-perishable':
         return items.filter(item => item.isPerishable === false);
+      case 'saved':
+        return items.filter(item => item.saved === true);
       case 'dairy':
       case 'meat':
       case 'produce':
@@ -462,6 +484,7 @@ const Dashboard = () => {
       setItems([]);
       setExpiringItems([]);
       setRecentItems([]);
+      setSavedItems([]);
       setStatValues({ total: 0, categories: 0, saved: 0 });
       
       // Show success notification with the result message
@@ -497,6 +520,71 @@ const Dashboard = () => {
   const handleCloseNotification = (event, reason) => {
     if (reason === 'clickaway') return;
     setNotification({ ...notification, open: false });
+  };
+
+  // Add a function to handle using an item
+  const handleUseItem = async (item) => {
+    try {
+      setLoading(true);
+      
+      // Decrease quantity by 1
+      const updatedQuantity = item.quantity - 1;
+      
+      // Create updated item object
+      const updatedItem = {
+        ...item,
+        quantity: updatedQuantity
+      };
+      
+      // If quantity reached 0, mark as saved
+      if (updatedQuantity === 0) {
+        updatedItem.saved = true;
+        
+        // Show success notification
+        setNotification({
+          open: true,
+          message: `${item.name} used up! Added to saved items.`,
+          severity: 'success'
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: `${item.name} quantity decreased to ${updatedQuantity}.`,
+          severity: 'success'
+        });
+      }
+      
+      // Update the item in the database
+      await dataService.editItem(currentUser.uid, updatedItem);
+      
+      // Update local state
+      setItems(items.map(i => 
+        i.id === item.id ? updatedItem : i
+      ));
+      
+      // If quantity reached 0, add to saved items
+      if (updatedQuantity === 0) {
+        setSavedItems([...savedItems, updatedItem]);
+        
+        // Update stats
+        setStatValues(prev => ({
+          ...prev,
+          saved: prev.saved + 1
+        }));
+      }
+      
+      // Trigger a refresh to ensure database is in sync
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error("Error using item:", error);
+      setNotification({
+        open: true,
+        message: `Error updating item: ${error.message}`,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -605,18 +693,28 @@ const Dashboard = () => {
                         >
                           <ListItemIcon sx={{ minWidth: 36 }}>
                             <Box sx={{ 
-                              animation: item.daysLeft <= 1 ? `${pulseWarning} 2s infinite` : 'none'
+                              animation: item.daysLeft <= 1 && !item.saved ? `${pulseWarning} 2s infinite` : 'none'
                             }}>
-                              {getExpiryStatusIcon(item.daysLeft)}
+                              {item.saved ? 
+                                <CheckCircleIcon sx={{ color: secondaryGreen, fontSize: 18 }} /> : 
+                                getExpiryStatusIcon(item.daysLeft)
+                              }
                             </Box>
                           </ListItemIcon>
                           <ListItemText 
                             primary={item.name} 
-                            secondary={`Expires in ${item.daysLeft} day${item.daysLeft !== 1 ? 's' : ''}`}
-                            primaryTypographyProps={{ color: 'text.primary' }}
+                            secondary={item.saved ? 
+                              `Used completely before expiry` : 
+                              `Expires in ${item.daysLeft} day${item.daysLeft !== 1 ? 's' : ''}`
+                            }
+                            primaryTypographyProps={{ 
+                              color: 'text.primary',
+                              sx: item.saved ? { textDecoration: 'line-through' } : {}
+                            }}
                             secondaryTypographyProps={{ 
-                              color: getExpiryStatusColor(item.daysLeft), 
-                              fontSize: '0.75rem' 
+                              color: item.saved ? secondaryGreen : getExpiryStatusColor(item.daysLeft), 
+                              fontSize: '0.75rem',
+                              sx: item.saved ? { fontStyle: 'italic' } : {}
                             }}
                           />
                           <Chip 
@@ -707,11 +805,27 @@ const Dashboard = () => {
                             }
                           }}
                         >
+                          <ListItemIcon sx={{ minWidth: 36 }}>
+                            {item.saved ? 
+                              <CheckCircleIcon sx={{ color: secondaryGreen, fontSize: 18 }} /> :
+                              null
+                            }
+                          </ListItemIcon>
                           <ListItemText 
                             primary={item.name} 
-                            secondary={`${item.daysLeft} days until expiry`}
-                            primaryTypographyProps={{ color: 'text.primary' }}
-                            secondaryTypographyProps={{ color: 'text.secondary', fontSize: '0.75rem' }}
+                            secondary={item.saved ? 
+                              "Used completely" : 
+                              `${item.daysLeft} days until expiry`
+                            }
+                            primaryTypographyProps={{ 
+                              color: 'text.primary',
+                              sx: item.saved ? { textDecoration: 'line-through' } : {}
+                            }}
+                            secondaryTypographyProps={{ 
+                              color: item.saved ? secondaryGreen : 'text.secondary', 
+                              fontSize: '0.75rem',
+                              sx: item.saved ? { fontStyle: 'italic' } : {}
+                            }}
                           />
                           <Chip 
                             label={item.category} 
@@ -774,7 +888,7 @@ const Dashboard = () => {
                       mr: 1.5
                     }}
                   >
-                    <Typography sx={{ color: 'text.primary', fontWeight: 'bold' }}>12</Typography>
+                    <Typography sx={{ color: 'text.primary', fontWeight: 'bold' }}>{statValues.total + statValues.categories + statValues.saved}</Typography>
                   </Box>
                   Statistics
                 </Typography>
@@ -830,6 +944,105 @@ const Dashboard = () => {
                     </Typography>
                   </motion.div>
                 </Box>
+              </Paper>
+            </motion.div>
+          </Grid>
+          
+          {/* New Saved from Waste Card */}
+          <Grid item xs={12} md={12}>
+            <motion.div variants={itemVariants}>
+              <Paper 
+                sx={{ 
+                  p: 3, 
+                  bgcolor: 'background.paper', 
+                  borderRadius: 3,
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  height: '100%',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: '0 12px 20px rgba(0,0,0,0.1)'
+                  }
+                }}
+              >
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    mb: 2, 
+                    color: secondaryGreen,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Box 
+                    sx={{ 
+                      bgcolor: 'rgba(74,234,188,0.1)',
+                      borderRadius: '50%',
+                      width: 32,
+                      height: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mr: 1.5
+                    }}
+                  >
+                    <Typography sx={{ color: secondaryGreen, fontWeight: 'bold' }}>{savedItems.length}</Typography>
+                  </Box>
+                  Saved from Waste
+                </Typography>
+                <Divider sx={{ bgcolor: 'rgba(255,255,255,0.05)', mb: 2 }} />
+                
+                {savedItems.length > 0 ? (
+                  <List sx={{ p: 0 }}>
+                    {savedItems.map((item) => (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                        key={item.id}
+                      >
+                        <ListItem 
+                          sx={{ 
+                            px: 0, 
+                            py: 1, 
+                            borderBottom: '1px solid rgba(255,255,255,0.03)',
+                            '&:last-of-type': { border: 'none' },
+                            transition: 'background-color 0.3s',
+                            '&:hover': { 
+                              bgcolor: 'rgba(255,255,255,0.03)',
+                              borderRadius: 1
+                            }
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 36 }}>
+                            <CheckCircleIcon sx={{ color: secondaryGreen, fontSize: 18 }} />
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={item.name} 
+                            secondary={`Used completely before expiry`}
+                            primaryTypographyProps={{ color: 'text.primary' }}
+                            secondaryTypographyProps={{ color: 'text.secondary', fontSize: '0.75rem' }}
+                          />
+                          <Chip 
+                            label={item.category} 
+                            size="small"
+                            sx={{ 
+                              bgcolor: 'rgba(255,255,255,0.05)', 
+                              color: 'text.secondary',
+                              fontSize: '0.7rem',
+                              transition: 'all 0.3s',
+                              '&:hover': {
+                                bgcolor: 'rgba(255,255,255,0.1)'
+                              }
+                            }}
+                          />
+                        </ListItem>
+                      </motion.div>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography color="text.secondary">No items saved from waste yet. Use the "Use Item" button to track used items.</Typography>
+                )}
               </Paper>
             </motion.div>
           </Grid>
@@ -963,6 +1176,16 @@ const Dashboard = () => {
                   }}
                 />
                 <Chip 
+                  label="Saved" 
+                  color={filter === 'saved' ? 'success' : 'default'}
+                  variant={filter === 'saved' ? 'filled' : 'outlined'}
+                  onClick={() => setFilter('saved')}
+                  sx={{ 
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    bgcolor: filter === 'saved' ? undefined : 'rgba(255,255,255,0.05)',
+                  }}
+                />
+                <Chip 
                   label="Expiring Soon" 
                   color={filter === 'expiring' ? 'warning' : 'default'}
                   variant={filter === 'expiring' ? 'filled' : 'outlined'}
@@ -1051,7 +1274,14 @@ const Dashboard = () => {
                             sx={{ fontSize: '0.7rem' }}
                           />
                         </TableCell>
-                        <TableCell align="right">{item.quantity}</TableCell>
+                        <TableCell align="right">
+                          <Chip 
+                            label={item.quantity}
+                            size="small"
+                            color={item.quantity <= 0 ? 'error' : 'default'}
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        </TableCell>
                         <TableCell align="right">{item.price}</TableCell>
                         <TableCell align="center">
                           {item.isPerishable ? safeFormatDisplayDate(item.expiryDate) : '—'}
@@ -1089,6 +1319,16 @@ const Dashboard = () => {
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="success"
+                            onClick={() => handleUseItem(item)}
+                            disabled={item.quantity <= 0 || item.saved}
+                            sx={{ ml: 1, fontSize: '0.7rem' }}
+                          >
+                            Use Item
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
