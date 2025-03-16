@@ -1,2 +1,14 @@
-# UNIHACK_2025
-UNIHACK 2025
+# ShelfAware
+
+## Running the Code
+Setup (requires node.js):
+
+```bash
+> npm install
+```
+
+Serve up the App (and ctrl-click the URL that appears in the console)
+
+```bash
+> npm run start
+```
