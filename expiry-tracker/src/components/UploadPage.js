@@ -1,30 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Box, 
   Typography, 
   Button,
-  Collapse,
-  IconButton,
   Paper,
   Divider,
   Grid,
-  Chip,
   useTheme
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import BugReportIcon from '@mui/icons-material/BugReport';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
 import FileUpload from './FileUpload';
-import StorageDebug from './StorageDebug';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const UploadPage = () => {
-  const [showDebug, setShowDebug] = useState(false);
-  const isDevelopment = process.env.NODE_ENV === 'development';
   const theme = useTheme();
   
   // Theme colors
@@ -114,48 +107,7 @@ const UploadPage = () => {
               </Box>
             </motion.div>
           </Box>
-          
-          {/* Debug toggle button (only in development) with improved styling */}
-          {isDevelopment && (
-            <Chip
-              icon={<BugReportIcon />}
-              label="Debug Storage"
-              clickable
-              onClick={() => setShowDebug(!showDebug)}
-              color={showDebug ? "primary" : "default"}
-              variant={showDebug ? "filled" : "outlined"}
-              sx={{ 
-                borderRadius: '8px',
-                '& .MuiChip-icon': { 
-                  fontSize: '1.2rem'
-                }
-              }}
-            />
-          )}
         </Box>
-        
-        {/* Debug panel with improved styling */}
-        {isDevelopment && (
-          <Collapse in={showDebug}>
-            <Paper 
-              elevation={0} 
-              sx={{ 
-                mb: 4, 
-                borderRadius: 3, 
-                overflow: 'hidden',
-                border: '1px solid rgba(255,255,255,0.1)',
-                bgcolor: 'rgba(0,0,0,0.2)'
-              }}
-            >
-              <Box sx={{ p: 2, bgcolor: 'rgba(117,93,255,0.1)' }}>
-                <Typography variant="subtitle1" fontWeight={600}>
-                  Storage Debugging
-                </Typography>
-              </Box>
-              <StorageDebug />
-            </Paper>
-          </Collapse>
-        )}
         
         {/* Upload Section */}
         <Grid container spacing={4}>

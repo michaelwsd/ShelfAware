@@ -15,15 +15,14 @@ import {
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { motion } from 'framer-motion';
+import { keyframes } from '@emotion/react';
 import Dashboard from './components/Dashboard';
 import UploadPage from './components/UploadPage';
 import HomePage from './components/HomePage';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
-import FirestoreBlockDetector from './components/FirestoreBlockDetector';
 import { useAuth } from './contexts/authContext';
 import { auth } from './firebase/firebase';
-import { keyframes } from '@emotion/react';
 
 // Layout component that handles conditional rendering of header/footer
 const AppLayout = ({ children }) => {
@@ -51,7 +50,7 @@ const AppLayout = ({ children }) => {
     color: 'transparent',
     display: 'inline-block'
   };
-
+  
   return (
     <Box sx={{ 
       minHeight: '100vh', 
@@ -173,12 +172,6 @@ const AppLayout = ({ children }) => {
       
       {/* Main Content */}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Add FirestoreBlockDetector in development mode */}
-        {process.env.NODE_ENV === 'development' && !isAuthPage && (
-          <Container maxWidth="xl" sx={{ mt: 2 }}>
-            <FirestoreBlockDetector />
-          </Container>
-        )}
         {children}
       </Box>
       

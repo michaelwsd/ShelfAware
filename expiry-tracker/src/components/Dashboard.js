@@ -40,6 +40,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
+import DirectionsIcon from '@mui/icons-material/Directions';
+import CallIcon from '@mui/icons-material/Call';
+import ShareIcon from '@mui/icons-material/Share';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { keyframes } from '@emotion/react';
@@ -132,6 +138,45 @@ const Dashboard = () => {
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
   const [filter, setFilter] = useState('all');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [donationDialogOpen, setDonationDialogOpen] = useState(false);
+  const [itemToDonate, setItemToDonate] = useState(null);
+  
+  // Mock data for nearby donation locations
+  const mockDonationLocations = [
+    {
+      id: 1,
+      name: "Community Food Bank",
+      distance: "1.2 miles",
+      address: "123 Charity Lane, City",
+      phone: "(555) 123-4567",
+      acceptsExpiring: true,
+      hours: "Mon-Fri: 9am-5pm, Sat: 10am-2pm",
+      image: "https://images.unsplash.com/photo-1593113630400-ea4288922497?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80",
+      description: "Accepting all non-expired food items to help local families in need."
+    },
+    {
+      id: 2,
+      name: "Hope Shelter",
+      distance: "2.5 miles",
+      address: "456 Hope Street, City",
+      phone: "(555) 234-5678",
+      acceptsExpiring: true,
+      hours: "24/7 for donations",
+      image: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80",
+      description: "Providing meals for homeless individuals. We welcome all food donations."
+    },
+    {
+      id: 3,
+      name: "Neighborhood Pantry",
+      distance: "0.8 miles",
+      address: "789 Local Avenue, City",
+      phone: "(555) 345-6789",
+      acceptsExpiring: false,
+      hours: "Tue & Thu: 3pm-7pm, Sat: 9am-12pm",
+      image: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80",
+      description: "Neighborhood-run pantry providing groceries to local families in need."
+    }
+  ];
   
   useEffect(() => {
     const fetchItems = async () => {
@@ -597,6 +642,65 @@ const Dashboard = () => {
     }
   };
 
+  // Function to handle donation button click
+  const handleDonateItem = (item) => {
+    setItemToDonate(item);
+    setDonationDialogOpen(true);
+  };
+  
+  // Function to simulate donating an item
+  const handleCompleteDonation = async (locationId) => {
+    if (!itemToDonate) return;
+    
+    try {
+      setLoading(true);
+      
+      // Create updated item object (mark as saved and donated)
+      const updatedItem = {
+        ...itemToDonate,
+        saved: true,
+        donated: true,
+        quantity: 0
+      };
+      
+      // Update the item in the database
+      await dataService.editItem(currentUser.uid, updatedItem);
+      
+      // Update local state
+      setItems(items.map(i => 
+        i.id === itemToDonate.id ? updatedItem : i
+      ));
+      
+      // Add to saved items if not already there
+      if (!savedItems.some(item => item.id === itemToDonate.id)) {
+        setSavedItems([...savedItems, updatedItem]);
+      }
+      
+      // Show success notification
+      setNotification({
+        open: true,
+        message: `${itemToDonate.name} has been donated to ${mockDonationLocations.find(loc => loc.id === locationId).name}!`,
+        severity: 'success'
+      });
+      
+      // Close dialog
+      setDonationDialogOpen(false);
+      setItemToDonate(null);
+      
+      // Trigger a refresh
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error("Error donating item:", error);
+      setNotification({
+        open: true,
+        message: `Error donating item: ${error.message}`,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box sx={{ width: '100%', p: 2 }}>
       {/* Dashboard Header */}
@@ -740,6 +844,26 @@ const Dashboard = () => {
                               }
                             }}
                           />
+                          {!item.saved && item.daysLeft <= 3 && item.daysLeft >= 0 && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="secondary"
+                              startIcon={<VolunteerActivismIcon />}
+                              onClick={() => handleDonateItem(item)}
+                              sx={{ 
+                                ml: 1, 
+                                fontSize: '0.7rem',
+                                borderColor: 'rgba(74,234,188,0.3)',
+                                '&:hover': { 
+                                  borderColor: secondaryGreen,
+                                  bgcolor: 'rgba(74,234,188,0.05)'
+                                }
+                              }}
+                            >
+                              Donate
+                            </Button>
+                          )}
                         </ListItem>
                       </motion.div>
                     ))}
@@ -1340,6 +1464,26 @@ const Dashboard = () => {
                           >
                             Use Item
                           </Button>
+                          {item.isPerishable && item.daysLeft <= 3 && item.daysLeft >= 0 && !item.saved && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="secondary"
+                              startIcon={<VolunteerActivismIcon />}
+                              onClick={() => handleDonateItem(item)}
+                              sx={{ 
+                                ml: 1, 
+                                fontSize: '0.7rem',
+                                borderColor: 'rgba(74,234,188,0.3)',
+                                '&:hover': { 
+                                  borderColor: secondaryGreen,
+                                  bgcolor: 'rgba(74,234,188,0.05)'
+                                }
+                              }}
+                            >
+                              Donate
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1508,6 +1652,184 @@ const Dashboard = () => {
           </Button>
           <Button onClick={handleDeleteAllItems} color="error" variant="contained">
             Delete All
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Donation Dialog */}
+      <Dialog 
+        open={donationDialogOpen} 
+        onClose={() => setDonationDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          bgcolor: 'rgba(74,234,188,0.05)',
+          pb: 2
+        }}>
+          <VolunteerActivismIcon sx={{ color: secondaryGreen, mr: 1.5 }} />
+          Donate {itemToDonate?.name}
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          {itemToDonate && (
+            <>
+              <Alert severity="info" sx={{ mb: 3 }}>
+                This item will expire in {itemToDonate.daysLeft} day{itemToDonate.daysLeft !== 1 ? 's' : ''}. 
+                Donating can help someone in need while preventing food waste!
+              </Alert>
+              
+              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                <LocationOnIcon sx={{ mr: 1, color: primaryPurple }} />
+                Nearby Donation Locations
+              </Typography>
+              
+              <Grid container spacing={3}>
+                {mockDonationLocations.map((location) => (
+                  <Grid item xs={12} md={4} key={location.id}>
+                    <Paper 
+                      elevation={0}
+                      sx={{ 
+                        p: 0,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-5px)',
+                          boxShadow: '0 10px 20px rgba(0,0,0,0.2)'
+                        }
+                      }}
+                    >
+                      <Box 
+                        sx={{ 
+                          height: 140,
+                          backgroundImage: `url(${location.image})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          position: 'relative'
+                        }}
+                      >
+                        <Box sx={{ 
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          p: 1,
+                          background: 'linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0))',
+                          display: 'flex',
+                          justifyContent: 'space-between'
+                        }}>
+                          <Chip 
+                            label={location.distance} 
+                            size="small"
+                            icon={<LocationOnIcon sx={{ fontSize: '0.8rem !important' }} />}
+                            sx={{ 
+                              bgcolor: 'rgba(0,0,0,0.5)',
+                              color: 'white',
+                              height: 22,
+                              '& .MuiChip-icon': { color: 'white' }
+                            }}
+                          />
+                          {location.acceptsExpiring && (
+                            <Chip 
+                              label="Accepts Expiring" 
+                              size="small"
+                              sx={{ 
+                                bgcolor: 'rgba(74,234,188,0.2)',
+                                color: secondaryGreen,
+                                height: 22
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </Box>
+                      
+                      <Box sx={{ p: 2, flexGrow: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                          {location.name}
+                        </Typography>
+                        
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {location.description}
+                        </Typography>
+                        
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <LocationOnIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {location.address}
+                          </Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                          <AccessTimeIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {location.hours}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      
+                      <Divider sx={{ opacity: 0.1 }} />
+                      
+                      <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box>
+                          <IconButton size="small" sx={{ mr: 1 }}>
+                            <CallIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small">
+                            <DirectionsIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                        
+                        <Button 
+                          variant="contained" 
+                          color="secondary"
+                          size="small"
+                          onClick={() => handleCompleteDonation(location.id)}
+                          disabled={!location.acceptsExpiring && itemToDonate.daysLeft <= 1}
+                        >
+                          Donate Here
+                        </Button>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+              
+              <Box sx={{ mt: 3, p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1, color: primaryPurple }}>
+                  About Food Donation
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  When donating food items, be sure they are properly sealed and labeled with the 
+                  item name and expiration date. Most shelters and food banks welcome unopened 
+                  items that are close to their expiration date, especially protein-rich and 
+                  non-perishable foods.
+                </Typography>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDonationDialogOpen(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button 
+            startIcon={<ShareIcon />}
+            onClick={() => {
+              setNotification({
+                open: true,
+                message: "Sharing options would appear here in a production app",
+                severity: 'info'
+              });
+            }} 
+            color="primary"
+          >
+            Share These Locations
           </Button>
         </DialogActions>
       </Dialog>
