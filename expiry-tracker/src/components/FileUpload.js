@@ -188,7 +188,7 @@ const FileUpload = () => {
             ...item,
             tempId: `temp-${Date.now()}-${index}`,
             purchaseDate: receiptData.date || new Date(),
-            daysLeft: daysLeft
+            // daysLeft: daysLeft
           };
         });
         
@@ -327,7 +327,7 @@ const FileUpload = () => {
         ...item,
         purchaseDate: newPurchaseDate,
         expiryDate: newExpiryDate,
-        daysLeft: daysLeft
+        // daysLeft: daysLeft
       };
     });
     
@@ -372,7 +372,7 @@ const FileUpload = () => {
       expiryDays: 7,
       purchaseDate: purchaseDate,
       expiryDate: expiryDate,
-      daysLeft: daysLeft
+      // daysLeft: daysLeft
     };
     
     setExtractedItems([...extractedItems, newItem]);
@@ -1161,7 +1161,7 @@ const FileUpload = () => {
                           ...currentItem, 
                           expiryDays: days,
                           expiryDate: newExpiryDate,
-                          daysLeft: daysLeft
+                          // daysLeft: daysLeft
                         });
                       }}
                       fullWidth
@@ -1189,7 +1189,7 @@ const FileUpload = () => {
                           ...currentItem,
                           expiryDate: newDate,
                           expiryDays: daysDiff,
-                          daysLeft: daysLeft
+                          // daysLeft: daysLeft
                         });
                       }}
                       InputLabelProps={{ shrink: true }}

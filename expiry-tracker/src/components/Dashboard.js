@@ -91,6 +91,7 @@ const safeFormatDate = (dateValue) => {
 
 // Add a helper function for safe date formatting
 const safeFormatDisplayDate = (dateValue) => {
+  // console.log(dateValue);
   try {
     // First check if it's a valid Date object
     if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
@@ -146,26 +147,35 @@ const Dashboard = () => {
               // Convert string dates to Date objects if needed
               let expiryDate;
               let daysLeft = null;
-              
+              console.log(item);
               try {
                 // Safely convert to date object
-                if (item.expiryDate instanceof Date) {
-                  expiryDate = item.expiryDate;
-                } else if (item.expiryDate) {
-                  expiryDate = new Date(item.expiryDate);
-                  // Check if valid date was created
-                  if (isNaN(expiryDate.getTime())) {
-                    expiryDate = null;
-                  }
-                } else {
-                  expiryDate = null;
-                }
+                // if (item.expiryDate instanceof Date) {
+                //   expiryDate = item.expiryDate;
+                // } else if (item.expiryDate) {
+                //   expiryDate = new Date(item.expiryDate);
+                //   // Check if valid date was created
+                //   if (isNaN(expiryDate.getTime())) {
+                //     expiryDate = null;
+                //   }
+                // } else {
+                //   expiryDate = null;
+                // }
+
                 
                 // Only calculate days left if we have a valid expiry date
-                if (expiryDate) {
-                  const timeDiff = expiryDate.getTime() - now.getTime();
-                  daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
-                }
+                // if (expiryDate) {
+                //   const timeDiff = expiryDate.getTime() - now.getTime();
+                //   daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                // }
+
+                // console.log(item.expiryDate["seconds"]);
+                expiryDate = new Date(item.expiryDate["seconds"]*1000);
+                daysLeft = (item.expiryDate["seconds"] * 1000) - (now.getTime());
+                daysLeft = Math.ceil(daysLeft / (1000 * 3600 * 24));
+                console.log(daysLeft);
+                // console.log(item.expiryDate);
+
               } catch (error) {
                 console.warn('Error processing expiry date:', error, item);
                 expiryDate = null;
@@ -1253,6 +1263,7 @@ const Dashboard = () => {
                   </TableHead>
                   <TableBody>
                     {currentItems.map((item) => (
+                      console.log("currentItems map called, item:", item),
                       <TableRow key={item.id} hover>
                         <TableCell>{item.name}</TableCell>
                         <TableCell>
