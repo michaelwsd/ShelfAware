@@ -159,7 +159,7 @@ const storageService = {
       };
     }
   },
-  
+
   modifyPurchaseDate: async (userId, items, purchaseDate) => {
     console.log('Modifying purchase date for items:', items);
     const updatePromises = items.map(item => {
@@ -254,11 +254,11 @@ const storageService = {
         }
       }
       
-      return {
+    return { 
         error: errorMessage,
         originalError: error.message,
         code: error.code || 'unknown'
-      };
+    };
     }
   }
 };

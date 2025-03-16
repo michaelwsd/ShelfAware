@@ -23,6 +23,7 @@ import SignupPage from './components/SignupPage';
 import FirestoreBlockDetector from './components/FirestoreBlockDetector';
 import { useAuth } from './contexts/authContext';
 import { auth } from './firebase/firebase';
+import { keyframes } from '@emotion/react';
 
 // Layout component that handles conditional rendering of header/footer
 const AppLayout = ({ children }) => {
@@ -35,6 +36,22 @@ const AppLayout = ({ children }) => {
   const primaryPurple = '#755dff';
   const secondaryGreen = '#4aeabc';
   
+  // Add this gradient animation for the logo
+  const logoGradient = {
+    backgroundImage: `linear-gradient(90deg, ${primaryPurple}, ${secondaryGreen})`,
+    backgroundSize: '200% 100%',
+    animation: `${keyframes`
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    `} 8s ease infinite`,
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    color: 'transparent',
+    display: 'inline-block'
+  };
+
   return (
     <Box sx={{ 
       minHeight: '100vh', 
@@ -52,26 +69,37 @@ const AppLayout = ({ children }) => {
               to="/"
               sx={{ 
                 flexGrow: 1, 
-                fontWeight: 600,
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                fontSize: '1.2rem',
+                fontSize: '1.3rem',
                 textDecoration: 'none',
-                color: 'inherit'
+                color: 'inherit',
+                letterSpacing: '-0.02em',
+                transition: 'all 0.3s ease'
               }}
             >
               <Box 
                 sx={{ 
-                  bgcolor: 'rgba(117,93,255,0.1)', 
-                  p: 0.8, 
-                  borderRadius: '8px',
+                  background: `linear-gradient(135deg, ${primaryPurple}44, ${secondaryGreen}22)`,
+                  p: 0.9, 
+                  borderRadius: '10px',
                   mr: 1.5,
                   display: 'flex',
+                  boxShadow: `0 4px 12px rgba(117,93,255,0.2)`,
+                  border: '1px solid',
+                  borderColor: 'rgba(117,93,255,0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 6px 14px rgba(117,93,255,0.25)`,
+                  }
                 }}
               >
                 <ReceiptLongIcon sx={{ color: primaryPurple }} />
               </Box>
-              Food Expiry Tracker
+              <Box component="span" sx={logoGradient}>Shelf</Box>
+              <Box component="span" sx={{ fontWeight: 800, color: 'white' }}>Aware</Box>
             </Typography>
             
             {/* Navigation Links */}

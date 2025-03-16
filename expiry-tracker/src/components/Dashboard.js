@@ -1072,10 +1072,10 @@ const Dashboard = () => {
               All Tracked Items
             </Typography>
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button 
-                variant="outlined" 
+            <Button 
+              variant="outlined" 
                 color="error"
-                size="small"
+              size="small"
                 startIcon={<DeleteSweepIcon />}
                 onClick={() => setDeleteConfirmOpen(true)}
                 disabled={!items.length}
@@ -1092,14 +1092,14 @@ const Dashboard = () => {
                 size="small"
                 startIcon={<FilterListIcon />}
                 onClick={() => setViewAllOpen(!viewAllOpen)}
-                sx={{
-                  borderColor: 'rgba(255,255,255,0.1)',
-                  color: textPrimary,
-                  '&:hover': { borderColor: primaryPurple, bgcolor: 'rgba(117,93,255,0.05)' }
-                }}
-              >
+              sx={{
+                borderColor: 'rgba(255,255,255,0.1)',
+                color: textPrimary,
+                '&:hover': { borderColor: primaryPurple, bgcolor: 'rgba(117,93,255,0.05)' }
+              }}
+            >
                 {viewAllOpen ? 'Hide' : 'View All'}
-              </Button>
+            </Button>
             </Box>
           </Box>
           
@@ -1110,11 +1110,11 @@ const Dashboard = () => {
               <CircularProgress size={40} />
             </Box>
           ) : !items.length ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-              <Typography color="text.secondary" align="center">
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+            <Typography color="text.secondary" align="center">
                 No items found. Upload receipts to start tracking your food.
-              </Typography>
-            </Box>
+            </Typography>
+          </Box>
           ) : !viewAllOpen ? (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {items.slice(0, 5).map(item => (
