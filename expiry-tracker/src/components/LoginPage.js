@@ -119,8 +119,14 @@ const LoginPage = () => {
         await doSignInWithEmailAndPassword(email, password);
         console.log('Sign in successful');
       } catch (error) {
-        console.error("Sign in error:", error);
-        setErrorMessage(error.message || 'An error occurred during sign in');
+        console.error("Sign in error:", error.code);
+        if (error.code === 'auth/invalid-email') {
+            setErrorMessage('Invalid email address. Please check your email.');
+        } else if (error.code === 'auth/invalid-credential') {
+            setErrorMessage('Incorrect email or password. Please try again.');
+        } else {
+            setErrorMessage('An error occurred during email sign in');
+        }
       } finally {
         setIsSigningIn(false);
       }
@@ -141,7 +147,7 @@ const LoginPage = () => {
         console.log('Google sign in successful');
       } catch (error) {
         console.error("Google sign in error:", error);
-        setErrorMessage(error.message || 'An error occurred during Google sign in');
+        setErrorMessage('An error occurred during Google sign in');
       } finally {
         setIsSigningIn(false);
       }
