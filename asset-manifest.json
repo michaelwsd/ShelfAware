@@ -1,14 +1,14 @@
 {
   "files": {
-    "main.css": "/ShelfAware/static/css/main.07d19db2.css",
-    "main.js": "/ShelfAware/static/js/main.666885b7.js",
-    "static/media/food-waste.jpg": "/ShelfAware/static/media/food-waste.0f13fc38f7d1990cdbb9.jpg",
-    "index.html": "/ShelfAware/index.html",
-    "main.07d19db2.css.map": "/ShelfAware/static/css/main.07d19db2.css.map",
-    "main.666885b7.js.map": "/ShelfAware/static/js/main.666885b7.js.map"
+    "main.css": "/ShelfAware/home/static/css/main.07d19db2.css",
+    "main.js": "/ShelfAware/home/static/js/main.16a2296e.js",
+    "static/media/food-waste.jpg": "/ShelfAware/home/static/media/food-waste.0f13fc38f7d1990cdbb9.jpg",
+    "index.html": "/ShelfAware/home/index.html",
+    "main.07d19db2.css.map": "/ShelfAware/home/static/css/main.07d19db2.css.map",
+    "main.16a2296e.js.map": "/ShelfAware/home/static/js/main.16a2296e.js.map"
   },
   "entrypoints": [
     "static/css/main.07d19db2.css",
-    "static/js/main.666885b7.js"
+    "static/js/main.16a2296e.js"
   ]
 }
