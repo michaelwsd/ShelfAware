@@ -14,8 +14,6 @@ import {
   IconButton,
   Link as MuiLink,
   Alert,
-  CircularProgress,
-  Divider
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -34,12 +32,11 @@ const gradientShift = keyframes`
 `;
 
 const LoginPage = () => {
-  const { authError } = useAuth();
+  const { currentUser, authError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [formErrors, setFormErrors] = useState({
     email: '',
@@ -121,10 +118,15 @@ const LoginPage = () => {
         console.log('Attempting to sign in with email:', email);
         await doSignInWithEmailAndPassword(email, password);
         console.log('Sign in successful');
-        setIsSignedIn(true);
       } catch (error) {
-        console.error("Sign in error:", error);
-        setErrorMessage(error.message || 'An error occurred during sign in');
+        console.error("Sign in error:", error.code);
+        if (error.code === 'auth/invalid-email') {
+            setErrorMessage('Invalid email address. Please check your email.');
+        } else if (error.code === 'auth/invalid-credential') {
+            setErrorMessage('Incorrect email or password. Please try again.');
+        } else {
+            setErrorMessage('An error occurred during email sign in');
+        }
       } finally {
         setIsSigningIn(false);
       }
@@ -143,17 +145,16 @@ const LoginPage = () => {
         console.log('Attempting to sign in with Google');
         await doSignInWithGoogle();
         console.log('Google sign in successful');
-        setIsSignedIn(true);
       } catch (error) {
         console.error("Google sign in error:", error);
-        setErrorMessage(error.message || 'An error occurred during Google sign in');
+        setErrorMessage('An error occurred during Google sign in');
       } finally {
         setIsSigningIn(false);
       }
     }
   };
 
-  if (isSignedIn) {
+  if (currentUser) {
     return <Navigate to="/" replace />;
   }
 
@@ -258,6 +259,22 @@ const LoginPage = () => {
                 Sign in to track your food expiry dates
               </Typography>
             </motion.div>
+            
+            {/* Display error message */}
+            {errorMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Alert 
+                  severity="error" 
+                  sx={{ mb: 3, borderRadius: 2 }}
+                >
+                  {errorMessage}
+                </Alert>
+              </motion.div>
+            )}
 
             <motion.form 
               onSubmit={handleSubmit}
@@ -287,6 +304,9 @@ const LoginPage = () => {
                     '&:hover fieldset': {
                       borderColor: 'rgba(255,255,255,0.2)',
                     },
+                  },
+                  '& input:-webkit-autofill': {
+                    paddingLeft: '14px',
                   }
                 }}
               />
@@ -316,7 +336,7 @@ const LoginPage = () => {
                   ),
                 }}
                 sx={{ 
-                  mb: errorMessage ? 1 : 4,
+                  mb: 4,
                   '& .MuiOutlinedInput-root': {
                     '& fieldset': {
                       borderColor: 'rgba(255,255,255,0.1)',
@@ -324,17 +344,12 @@ const LoginPage = () => {
                     '&:hover fieldset': {
                       borderColor: 'rgba(255,255,255,0.2)',
                     },
+                  },
+                  '& input:-webkit-autofill': {
+                    paddingLeft: '14px',
                   }
                 }}
               />
-
-              <div style={{ color: "grey" }}>
-                {errorMessage && (
-                  <p className="error">
-                    {errorMessage && <p className="error">{errorMessage.slice(10, errorMessage.length)}</p>}
-                  </p>
-                )}
-              </div>
 
               <Button
                 type="submit"
