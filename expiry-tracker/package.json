@@ -27,7 +27,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "fix-cors": "npx firebase-tools storage:cors update --project foodwaste-5b731 cors.json"
   },
   "eslintConfig": {
     "extends": [
