@@ -49,41 +49,13 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 // For local development testing when Firebase Storage has CORS issues
 const saveImageToLocalStorage = (userId, imageFile) => {
   return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Data = reader.result;
-      // Store the image in localStorage (only for testing!)
-      try {
-        // Create a key for this image
-        const imageKey = `local_receipt_${userId}_${Date.now()}`;
-        // Store the metadata
-        localStorage.setItem(imageKey + '_meta', JSON.stringify({
-          name: imageFile.name,
-          type: imageFile.type,
-          size: imageFile.size,
-          timestamp: Date.now(),
-          userId
-        }));
-        
-        // Note: localStorage has size limits (~5MB), so this only works for testing with small images
-        localStorage.setItem(imageKey, base64Data);
-        
-        console.log('Image temporarily saved to localStorage for testing');
-        
-        resolve({
-          imageUrl: base64Data,
-          localStorageKey: imageKey,
-          message: 'Receipt image saved locally (Development mode)'
-        });
-      } catch (e) {
-        console.error('Error saving to localStorage:', e);
-        resolve({
-          error: 'Failed to save locally: ' + e.message,
-          message: 'Local storage error (possibly size exceeded)'
-        });
-      }
-    };
-    reader.readAsDataURL(imageFile);
+    // We no longer store the entire image, just use its reference
+    console.log('Using browser memory for temporary processing (not storing image)');
+    resolve({
+      imageUrl: 'memory-only', // We don't actually save the URL
+      localStorageKey: `temp_${Date.now()}`,
+      message: 'Receipt processed locally (Image not stored)'
+    });
   });
 };
 
@@ -199,13 +171,13 @@ const storageService = {
   },
   
   saveReceiptImage: async (userId, imageFile) => {
-    console.log('Storing receipt image:', imageFile.name);
+    console.log('Processing receipt image:', imageFile.name);
     
     // If in development and we want to use local storage for testing
     const useLocalStorageFallback = isDevelopment && localStorage.getItem('useLocalStorageFallback') === 'true';
     
     if (useLocalStorageFallback) {
-      console.log('Using localStorage fallback for development testing');
+      console.log('Using local processing instead of Firebase Storage');
       return saveImageToLocalStorage(userId, imageFile);
     }
     
@@ -214,6 +186,16 @@ const storageService = {
       const safeFileName = encodeURIComponent(imageFile.name).replace(/%20/g, '_');
       const timestamp = Date.now();
       const fileRef = `receipts/${userId}/${timestamp}_${safeFileName}`;
+      
+      // In development mode, we can skip actual storage and just pretend we stored it
+      if (isDevelopment) {
+        console.log('Development mode: Skipping actual storage upload');
+        return { 
+          imageUrl: 'memory-only',
+          storageRef: fileRef,
+          message: 'Development mode: Receipt processed (Image not stored)'
+        };
+      }
       
       console.log('Creating storage reference:', fileRef);
       

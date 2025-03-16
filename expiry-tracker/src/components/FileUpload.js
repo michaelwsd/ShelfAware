@@ -144,28 +144,18 @@ const FileUpload = () => {
     setProcessingComplete(false);
     
     try {
-      // 1. Upload the image to Firebase Storage
-      console.log("Starting image upload to Firebase Storage...");
+      // We'll still use the same method, but it's now just a pass-through that doesn't store the image
+      console.log("Preparing image for processing...");
       const imageResult = await dataService.saveReceiptImage(currentUser.uid, file);
       
       if (imageResult.error) {
-        console.error("Image upload error:", imageResult);
-        
-        // Handle CORS errors specifically
-        if (imageResult.originalError && imageResult.originalError.includes('CORS')) {
-          throw new Error(
-            "Cross-Origin error detected. This is likely a Firebase Storage configuration issue. " +
-            "Please ensure Firebase Storage CORS settings allow uploads from this domain."
-          );
-        }
-        
-        // Handle other storage errors
+        console.error("Image preparation error:", imageResult);
         throw new Error(imageResult.error);
       }
       
-      console.log("Image uploaded successfully:", imageResult);
+      console.log("Receipt ready for processing:", imageResult);
       
-      // 2. Process the receipt with OCR
+      // 2. Process the receipt with OCR directly from the file, not the saved image
       console.log("Starting OCR processing...");
       const receiptData = await ocrService.processReceipt(file);
       
@@ -223,9 +213,7 @@ const FileUpload = () => {
       let errorMessage = error.message;
       
       // Friendly error messages for common issues
-      if (errorMessage.includes('CORS')) {
-        errorMessage = "Network error: Can't upload to Firebase Storage. This is a configuration issue that needs to be fixed by the administrator.";
-      } else if (errorMessage.includes('network')) {
+      if (errorMessage.includes('network')) {
         errorMessage = "Network error: Check your internet connection and try again.";
       } else if (errorMessage.includes('permission')) {
         errorMessage = "Permission denied: You don't have access to upload files. Please log out and log in again.";
