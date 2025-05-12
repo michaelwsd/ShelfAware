@@ -1,5 +1,7 @@
 # ShelfAware
 
+[Devpost](https://devpost.com/software/shelfaware?ref_content=user-portfolio&ref_feature=in_progress)
+
 ## Running the Code
 Setup (requires node.js):
 
